@@ -194,17 +194,18 @@ func handleSubmitFaculty(writer http.ResponseWriter, reader *http.Request) {
 	res, err := db.Query("SELECT * FROM information_schema.tables WHERE table_schema='goLearn' AND table_name='teachers'")
 	if err != nil {
 		fmt.Println("database not defined")
-		if !res.Next() {
-			_, err = db.Exec("CREATE TABLE teachers (Tid int NOT NULL UNIQUE, Name varchar(255), ClassAllocated varchar(4), PRIMARY KEY(Tid))")
-			if err != nil {
-				fmt.Println("ISSUE WHILE CREATING TABLE")
-				sendJSONResponse(writer, 500, "Internal Server Error", "ERROR CREATING TABLE")
-				return
-			}
-			fmt.Println("table created")
-		}
+
 		sendJSONResponse(writer, 500, "Internal Server Error", "CANNOT FIND DATABASE")
 		return
+	}
+	if !res.Next() {
+		_, err = db.Exec("CREATE TABLE teachers (Tid int NOT NULL UNIQUE, Name varchar(255), ClassAllocated varchar(4), PRIMARY KEY(Tid))")
+		if err != nil {
+			fmt.Println("ISSUE WHILE CREATING TABLE")
+			sendJSONResponse(writer, 500, "Internal Server Error", "ERROR CREATING TABLE")
+			return
+		}
+		fmt.Println("table created")
 	}
 	defer res.Close()
 
@@ -247,17 +248,17 @@ func handleSubmitStudent(writer http.ResponseWriter, reader *http.Request) {
 	res, err := db.Query("SELECT * FROM information_schema.tables WHERE table_schema='goLearn' AND table_name='students'")
 	if err != nil {
 		fmt.Println("database not defined")
-		if !res.Next() {
-			_, err = db.Exec("CREATE TABLE students (RollNo int NOT NULL UNIQUE, Name varchar(255), Section varchar(4), PRIMARY KEY(RollNo))")
-			if err != nil {
-				fmt.Println("ISSUE WHILE CREATING TABLE")
-				sendJSONResponse(writer, 500, "Internal Server Error", "ERROR CREATING TABLE")
-				return
-			}
-			fmt.Println("table created")
-		}
 		sendJSONResponse(writer, 500, "Internal Server Error", "CANNOT FIND DATABASE")
 		return
+	}
+	if !res.Next() {
+		_, err = db.Exec("CREATE TABLE students (RollNo int NOT NULL UNIQUE, Name varchar(255), Section varchar(4), PRIMARY KEY(RollNo))")
+		if err != nil {
+			fmt.Println("ISSUE WHILE CREATING TABLE")
+			sendJSONResponse(writer, 500, "Internal Server Error", "ERROR CREATING TABLE")
+			return
+		}
+		fmt.Println("table created")
 	}
 	defer res.Close()
 
