@@ -136,6 +136,87 @@
 
 // }
 
+// package main
+
+// import (
+// 	"database/sql"
+// 	"fmt"
+// 	"io/ioutil"
+// 	"log"
+// 	"os"
+// 	"path/filepath"
+// 	"sort"
+
+// 	_ "github.com/lib/pq" // PostgreSQL driver
+// )
+
+// const (
+// 	dbHost     = "localhost"
+// 	dbPort     = 5432
+// 	dbUser     = "postgres"
+// 	dbPassword = "yourpassword"
+// 	dbName     = "yourdbname"
+// )
+
+// func main() {
+// 	// Construct connection string
+// 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+// 		dbHost, dbPort, dbUser, dbPassword, dbName)
+
+// 	// Connect to the database
+// 	db, err := sql.Open("postgres", psqlInfo)
+// 	if err != nil {
+// 		log.Fatalf("Unable to connect to database: %v", err)
+// 	}
+// 	defer db.Close()
+
+// 	// Verify connection
+// 	if err := db.Ping(); err != nil {
+// 		log.Fatalf("Unable to ping database: %v", err)
+// 	}
+
+// 	fmt.Println("✅ Connected to the database.")
+
+// 	// Run migrations
+// 	err = runMigrations(db, "./migrations")
+// 	if err != nil {
+// 		log.Fatalf("Migration failed: %v", err)
+// 	}
+
+// 	fmt.Println("✅ Migrations completed.")
+// }
+
+// func runMigrations(db *sql.DB, migrationsDir string) error {
+// 	files, err := ioutil.ReadDir(migrationsDir)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to read migrations directory: %w", err)
+// 	}
+
+// 	var sqlFiles []string
+// 	for _, f := range files {
+// 		if filepath.Ext(f.Name()) == ".sql" {
+// 			sqlFiles = append(sqlFiles, f.Name())
+// 		}
+// 	}
+
+// 	sort.Strings(sqlFiles) // Ensure order (e.g., 001_*, 002_*, etc.)
+
+// 	for _, file := range sqlFiles {
+// 		path := filepath.Join(migrationsDir, file)
+// 		content, err := os.ReadFile(path)
+// 		if err != nil {
+// 			return fmt.Errorf("failed to read file %s: %w", file, err)
+// 		}
+
+// 		fmt.Printf("➡️ Running migration: %s\n", file)
+// 		if _, err := db.Exec(string(content)); err != nil {
+// 			return fmt.Errorf("failed to execute %s: %w", file, err)
+// 		}
+// 	}
+
+// 	return nil
+// }
+
 package main
 
 import (
@@ -146,18 +227,15 @@ import (
 	"log"
 	"net/http"
 
+	"example.com/main/migration"
+	"example.com/main/routes"
 	"example.com/main/subjects"
+	"example.com/main/teacher"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
-const dsn = "root:admin123@tcp(127.0.0.1:3306)/goLearn"
-
-type TeacherInfo struct {
-	Tid            int    `json:"id" binding:"required"`
-	Name           string `json:"name" binding:"required"`
-	ClassAllocated string `json:"clasTeacher" binding:"required"`
-}
+const dsn = "root:admin123@tcp(127.0.0.1:3306)/goLearn?multiStatements=true"
 
 type ReturnMsg struct {
 	Code    int    `json:"statusCode" binding:"required"`
@@ -180,63 +258,6 @@ func sendJSONResponse(writer http.ResponseWriter, code int, status, message stri
 		return
 	}
 	writer.Write(b)
-}
-
-func handleSubmitFaculty(writer http.ResponseWriter, reader *http.Request) {
-	// SELECT * FROM information_schema.tables WHERE table_schema='goLearn' AND table_name='moreInfo';
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		log.Fatal("Error opening DB: ", err)
-		sendJSONResponse(writer, 500, "Internal Server Error", "ERROR CONNECTING DATABASE")
-		return
-	}
-	defer db.Close()
-	res, err := db.Query("SELECT * FROM information_schema.tables WHERE table_schema='goLearn' AND table_name='teachers'")
-	if err != nil {
-		fmt.Println("database not defined")
-
-		sendJSONResponse(writer, 500, "Internal Server Error", "CANNOT FIND DATABASE")
-		return
-	}
-	if !res.Next() {
-		_, err = db.Exec("CREATE TABLE teachers (Tid int NOT NULL UNIQUE, Name varchar(255), ClassAllocated varchar(4), PRIMARY KEY(Tid))")
-		if err != nil {
-			fmt.Println("ISSUE WHILE CREATING TABLE")
-			sendJSONResponse(writer, 500, "Internal Server Error", "ERROR CREATING TABLE")
-			return
-		}
-		fmt.Println("table created")
-	}
-	defer res.Close()
-
-	body, err := io.ReadAll(reader.Body)
-	if err != nil {
-		fmt.Println(err)
-		sendJSONResponse(writer, 404, "Not Found", "BODY UNREADABLE")
-		return
-	}
-	var data TeacherInfo
-	if err = json.Unmarshal(body, &data); err != nil {
-		fmt.Println(err)
-		sendJSONResponse(writer, 404, "Not Found", "REQUIRED FIELDS EMPTY")
-		return
-	}
-	transisiton, err := db.Begin()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	_, err = db.Exec(`INSERT INTO teachers (Tid, Name, ClassAllocated) VALUES (?,?,?)`, data.Tid, data.Name, data.ClassAllocated)
-	if err != nil {
-		fmt.Println(err)
-		transisiton.Rollback()
-	}
-	err = transisiton.Commit()
-	if err != nil {
-		panic(err)
-	}
-	sendJSONResponse(writer, 200, "Ok", "DATA ADDED SUCCESSFULLY")
-	fmt.Println("commited and saved successfully")
 }
 
 func handleSubmitStudent(writer http.ResponseWriter, reader *http.Request) {
@@ -301,21 +322,27 @@ func handleSubmitStudent(writer http.ResponseWriter, reader *http.Request) {
 	fmt.Println("commited and saved successfully")
 }
 
-func handleSubjectInfo(writer http.ResponseWriter, reader *http.Request) {
-	subjects.AddSubjectInfo(writer, reader)
-}
-
 func main() {
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		log.Fatal("Error opening DB: ", err)
+	}
+	defer db.Close()
+	migration.RunMigrations(db, "./migration")
 	start := func(w http.ResponseWriter, _ *http.Request) {
 		if _, err := w.Write([]byte("welcome to server")); err != nil {
 			fmt.Println(err)
 		}
 	}
+
+	router := routes.InitializeRouter()
+	router.Run("localhost:8090")
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", start)
-	mux.HandleFunc("/addFaculty", handleSubmitFaculty)
+	mux.HandleFunc("/addFaculty", teacher.HandleSubmitFaculty)
 	mux.HandleFunc("/addStudent", handleSubmitStudent)
-	mux.HandleFunc("/addSubject", handleSubjectInfo)
+	mux.HandleFunc("/addSubject", subjects.AddSubjectInfo)
 
 	// 	handler := cors.New(cors.Options{
 	// 		AllowedOrigins: []string{"http://localhost:5173"},
