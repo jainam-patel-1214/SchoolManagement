@@ -15,7 +15,7 @@ func InitializeRouter() *gin.Engine {
 		stud.Use(middleware.ValidateSession())
 		{
 			stud.GET("/display", student.DisplayStudents)
-			stud.GET("/displaySub")
+			stud.GET("/displaySub", student.DisplaySubject)
 			stud.GET("displayMark")
 		}
 	}

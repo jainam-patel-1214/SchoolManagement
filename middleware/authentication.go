@@ -119,13 +119,35 @@ func ValidateSession() gin.HandlerFunc {
 			token, err := jwt.ParseWithClaims(userCookie, claim, func(t *jwt.Token) (any, error) {
 				return []byte("9tvfPMwMVQHdksYp"), nil
 			})
-
 			if err != nil || !token.Valid {
 				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
 				return
 			}
+			if claim.Role != "student" && claim.Role != "teacher" {
+				fmt.Println("\n\n\n role \n\n", claim.Role)
+				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token provided"})
+				return
+			}
+			db, err := sql.Open("mysql", dsn)
+			if err != nil {
+				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "error authorizing token validity"})
+				return
+			}
+			defer db.Close()
 
+			unixTime := claim.RegisteredClaims.ExpiresAt.Time
+			tmptime := time.Now()
+			if tmptime.After(unixTime) {
+				_, err = db.Exec("DELETE FROM activeSessions WHERE sessiontoken = '?'", userCookie)
+				if err != nil {
+					ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "error authorizing token validity"})
+					return
+				}
+				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "expired token login again"})
+				return
+			}
 			ctx.Set("userrole", claim.Role)
+			ctx.Set("UiD", claim.Uid)
 			ctx.Next()
 		}
 	}
