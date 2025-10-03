@@ -229,8 +229,6 @@ import (
 
 	"example.com/main/migration"
 	"example.com/main/routes"
-	"example.com/main/subjects"
-	"example.com/main/teacher"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -329,20 +327,20 @@ func main() {
 	}
 	defer db.Close()
 	migration.RunMigrations(db, "./migration")
-	start := func(w http.ResponseWriter, _ *http.Request) {
-		if _, err := w.Write([]byte("welcome to server")); err != nil {
-			fmt.Println(err)
-		}
-	}
+	// start := func(w http.ResponseWriter, _ *http.Request) {
+	// 	if _, err := w.Write([]byte("welcome to server")); err != nil {
+	// 		fmt.Println(err)
+	// 	}
+	// }
 
 	router := routes.InitializeRouter()
 	router.Run("localhost:8090")
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", start)
-	mux.HandleFunc("/addFaculty", teacher.HandleSubmitFaculty)
-	mux.HandleFunc("/addStudent", handleSubmitStudent)
-	mux.HandleFunc("/addSubject", subjects.AddSubjectInfo)
+	// mux := http.NewServeMux()
+	// mux.HandleFunc("/", start)
+	// mux.HandleFunc("/addFaculty", teacher.HandleSubmitFaculty)
+	// mux.HandleFunc("/addStudent", handleSubmitStudent)
+	// mux.HandleFunc("/addSubject", subjects.AddSubjectInfo)
 
 	// 	handler := cors.New(cors.Options{
 	// 		AllowedOrigins: []string{"http://localhost:5173"},
@@ -350,5 +348,5 @@ func main() {
 	// for later use
 
 	fmt.Println("Server running at port 6969")
-	http.ListenAndServe(":6969", mux)
+	// http.ListenAndServe(":6969", mux)
 }

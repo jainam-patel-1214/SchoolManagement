@@ -2,10 +2,11 @@ package student
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 
 const dsn = "root:admin123@tcp(127.0.0.1:3306)/goLearn"
@@ -33,51 +34,71 @@ type StudentInfo struct {
 }
 
 type DisplayConditions struct {
-	ViewByClass   bool   `json:"veiwByClass" binding:"required"`
-	ClassID       string `json:"classId" binding:"required"`
-	ViewByPercent bool   `json:"viewByPercent" binding:"required"`
-	StartPercent  int    `json:"startPercent" binding:"required"`
-	EndPercent    int    `json:"endPercent" binding:"required"`
-	ViewByMarks   bool   `json:"viewByMark" binding:"required"`
+	ViewByStd     int    `json:"viewByStd"`
+	ViewBySection string `json:"viewBySection"`
+	MinPercent    int    `json:"minPercent"`
+	MaxPercent    int    `json:"maxPercent"`
 }
 
-func DisplayStudents(writer http.ResponseWriter, reader *http.Request) {
+func DisplayStudents(ctx *gin.Context) {
+	role, exist := ctx.Get("userrole")
+	if !exist {
+		fmt.Println("no token found")
+		return
+	}
+	if role == "student" {
+		fmt.Println("wrong role")
+		var constraints DisplayConditions
+		if err := ctx.BindJSON(&constraints); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
+			return
+		}
+		fmt.Println("555,", constraints)
+		dbstr := "SELECT s.studName, s.std, s.section, sub.subName, m.theoryM, m.practicalM, m.grade FROM students s RIGHT JOIN marks m ON s.grNo = m.grNo INNER JOIN subjects sub ON m.subId = sub.subId"
+		count := 0
+		if constraints.ViewByStd != 0 {
+			if count == 0 {
+				dbstr += " WHERE "
+				count++
+			}
+			dbstr += "s.std = " + strconv.Itoa(constraints.ViewByStd)
+		}
+		if constraints.ViewBySection != "" {
+			if count == 0 {
+				dbstr += " WHERE "
+				count++
+			} else if count > 0 {
+				dbstr += " AND "
+			}
+			dbstr += "s.section = " + "'" + constraints.ViewBySection + "'"
+		}
+		if constraints.MinPercent != 0 {
+			if count == 0 {
+				dbstr += " WHERE "
+				count++
+			} else if count > 0 {
+				dbstr += " AND "
+			}
+			dbstr += "(m.theoryM+m.practicalM) > " + strconv.Itoa(constraints.MinPercent)
+		}
+		if constraints.MaxPercent != 0 {
+			if count == 0 {
+				dbstr += " WHERE "
+				count++
+			} else if count > 0 {
+				dbstr += " AND "
+			}
+			dbstr += "(m.theoryM + m.practicalM) < " + strconv.Itoa(constraints.MaxPercent)
+		}
+		fmt.Println(dbstr)
+		return
+	}
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		var fail = ReturnMsg{Code: 500, Status: "Internal Server Error", Message: "CANNOT CONNECT DATABSE"}
-		b, err1 := json.Marshal(fail)
-		if err1 != nil {
-			fmt.Println(err1)
-		}
-		writer.Write(b)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
 		return
 	}
+
 	defer db.Close()
-	req, err := io.ReadAll(reader.Body)
-	if err != nil {
-		var fail = ReturnMsg{Code: 404, Status: "Not found", Message: "REQUIRED FIELDS EMPTY"}
-		b, err1 := json.Marshal(fail)
-		if err1 != nil {
-			fmt.Println(err1)
-		}
-		writer.Write(b)
-		return
-	}
-
-	type Output struct {
-		Name string `json:"studentName"`
-	}
-
-	var constraints DisplayConditions
-	if err = json.Unmarshal(req, &constraints); err != nil {
-		fmt.Println("error while reading paramaeterrs")
-		return
-	}
-	if constraints.ViewByClass && !constraints.ViewByPercent {
-
-	} else if constraints.ViewByPercent && !constraints.ViewByClass {
-
-	} else if constraints.ViewByClass && constraints.ViewByPercent {
-
-	}
+	fmt.Println("trying debug")
 }
