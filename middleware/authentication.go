@@ -3,6 +3,8 @@ package middleware
 import (
 	"database/sql"
 	"fmt"
+
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -39,7 +41,7 @@ func CreateSession(ctx *gin.Context) {
 	}
 	defer db.Close()
 	var credentials struct {
-		UserId   int    `json:"userId"`
+		UserId   any    `json:"userId"`
 		Password string `json:"password"`
 	}
 	claim := &JwtClaims{}
@@ -68,7 +70,7 @@ func CreateSession(ctx *gin.Context) {
 		claim.RegisteredClaims.IssuedAt = jwt.NewNumericDate(time.Now())
 		claim.RegisteredClaims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(24 * time.Hour))
 	} else if !res.Next() {
-		res, err = db.Query("SELECT tId, userRole FROM teachers WHERE tId='?' AND tPwd='?' ", credentials.UserId, credentials.Password)
+		res, err = db.Query("SELECT tId, userRole FROM teachers WHERE tId=? AND tPwd=? ", credentials.UserId, credentials.Password)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, err)
 			return
@@ -113,6 +115,12 @@ func ValidateSession() gin.HandlerFunc {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "token not found"})
 			return
 		} else {
+			db, err := sql.Open("mysql", dsn)
+			if err != nil {
+				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "error authorizing token validity"})
+				return
+			}
+			defer db.Close()
 			fmt.Println(userCookie)
 			claim := &JwtClaims{}
 
@@ -120,6 +128,11 @@ func ValidateSession() gin.HandlerFunc {
 				return []byte("9tvfPMwMVQHdksYp"), nil
 			})
 			if err != nil || !token.Valid {
+				_, err = db.Exec("DELETE FROM activeSessions WHERE sessiontoken=?", userCookie)
+				if err != nil {
+					log.Fatal("(ValidateSession) error in deleting active session", err)
+					return
+				}
 				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
 				return
 			}
@@ -128,17 +141,11 @@ func ValidateSession() gin.HandlerFunc {
 				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token provided"})
 				return
 			}
-			db, err := sql.Open("mysql", dsn)
-			if err != nil {
-				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "error authorizing token validity"})
-				return
-			}
-			defer db.Close()
 
 			unixTime := claim.RegisteredClaims.ExpiresAt.Time
 			tmptime := time.Now()
 			if tmptime.After(unixTime) {
-				_, err = db.Exec("DELETE FROM activeSessions WHERE sessiontoken = '?'", userCookie)
+				_, err = db.Exec("DELETE FROM activeSessions WHERE sessiontoken = ?", userCookie)
 				if err != nil {
 					ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "error authorizing token validity"})
 					return

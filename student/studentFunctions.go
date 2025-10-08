@@ -3,6 +3,7 @@ package student
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -42,8 +43,9 @@ type DisplayConditions struct {
 
 func DisplayStudents(ctx *gin.Context) {
 	role, exist := ctx.Get("userrole")
-	if !exist {
+	if !exist || role != "student" {
 		fmt.Println("no token found")
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
 		return
 	}
 	if role == "student" {
@@ -129,8 +131,9 @@ func DisplayStudents(ctx *gin.Context) {
 
 func DisplaySubject(ctx *gin.Context) {
 	role, exist := ctx.Get("userrole")
-	if !exist {
+	if !exist || role != "student" {
 		fmt.Println("no token found")
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
 		return
 	}
 	if role == "student" {
@@ -175,4 +178,86 @@ func DisplaySubject(ctx *gin.Context) {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
 	}
 	fmt.Println("trying debug")
+}
+
+func Report(ctx *gin.Context) {
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "student" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
+		return
+	} else {
+		type MarkJson struct {
+			SubjectId     int    `json:"subId"`
+			Subject       string `json:"subjectName"`
+			TheoryMark    int    `json:"theoryMM"`
+			PracticalMark int    `json:"practicalMM"`
+			Grade         string `json:"grade"`
+		}
+		type Comments struct {
+			TeacherId   string `json:"tId"`
+			TeacherName string `json:"tName"`
+			Comment     string `json:"comment"`
+		}
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cant connect to db"})
+			return
+		}
+		defer db.Close()
+
+		searchParam, exist := ctx.Get("UiD")
+		if !exist {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "id not found"})
+			return
+		}
+		temp := fmt.Sprintf("%v", searchParam)
+		tc, err := db.Begin()
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		res1, err := db.Query("SELECT m.subId s.subName m.theoryM m.practicalM m.grade FROM marks m INNER JOIN subjects s ON s.subId == m.subId WHERE m.grNo = ?", temp)
+		if err != nil {
+			tc.Rollback()
+			log.Fatal(err)
+			return
+		}
+		_, err = tc.Exec("SAVEPOINT query1done")
+		if err != nil {
+			tc.Rollback()
+			log.Fatal("Failed to create savepoint:", err)
+		}
+		res2, err := db.Query("SELECT r.tId t.tName r.comment FROM reviews r INNER JOIN teachers t ON t.tId == r.tId WHERE m.grNo = ?", temp)
+		if err != nil {
+			_, err = tc.Exec("ROLLBACK TO SAVEPOINT query1done")
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error processing query"})
+			return
+		}
+		if err = tc.Commit(); err != nil {
+			log.Fatal("Failed to commit transaction:", err)
+		}
+		var otpt struct {
+			MarkInfo    []MarkJson
+			CommentInfo []Comments
+		}
+		for res1.Next() {
+			var tp MarkJson
+			err = res1.Scan(&tp.SubjectId, &tp.Subject, &tp.TheoryMark, &tp.PracticalMark, &tp.Grade)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cant process query output"})
+				return
+			}
+			otpt.MarkInfo = append(otpt.MarkInfo, tp)
+		}
+		for res2.Next() {
+			var tp Comments
+			err = res1.Scan(&tp.TeacherId, &tp.TeacherName, &tp.Comment)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cant process query output"})
+				return
+			}
+			otpt.CommentInfo = append(otpt.CommentInfo, tp)
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": otpt})
+	}
 }

@@ -54,16 +54,16 @@ INSERT INTO teachersSubInfo (tId, subId, std, section) VALUES
 
 -- Inserts for marks
 INSERT INTO marks (grNo, subId, theoryM, practicalM, grade) VALUES
-(1, 101, 75, 18, 'A'),
-(2, 102, 68, 15, 'B'),
-(3, 103, 70, 17, 'B'),
-(4, 104, 60, 14, 'C'),
-(5, 105, 72, 16, 'B'),
-(6, 106, 78, 19, 'A'),
-(7, 107, 65, 13, 'C'),
-(8, 108, 69, 15, 'B'),
-(9, 109, 80, 20, 'A'),
-(10, 110, 55, 10, 'D');
+(1, 102, 65, 20, 'A'),
+(2, 101, 78, 15, 'B'),
+(3, 102, 60, 17, 'B'),
+(4, 103, 80, 14, 'C'),
+(5, 104, 52, 16, 'B'),
+(6, 105, 68, 17, 'A'),
+(7, 106, 75, 18, 'C'),
+(8, 106, 80, 15, 'B'),
+(9, 107, 50, 20, 'A'),
+(10, 109, 25, 15, 'D');
 
 -- Inserts for subjectAllocation
 INSERT INTO subjectAllocation (std, markLimit) VALUES

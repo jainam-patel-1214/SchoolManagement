@@ -2,12 +2,11 @@ package teacher
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
+	"strconv"
 
+	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -29,156 +28,206 @@ type TeacherInfo struct {
 	ClassAllocated string `json:"clasTeacher" binding:"required"`
 }
 
-func sendJSONResponse(writer http.ResponseWriter, code int, status, message string) {
-	writer.WriteHeader(code)
-	response := ReturnMsg{Code: code, Status: status, Message: message}
-	b, err := json.Marshal(response)
-	if err != nil {
-		fmt.Println("JSON Marshal error:", err)
-		return
-	}
-	writer.Write(b)
-}
-
-func HandleSubmitFaculty(writer http.ResponseWriter, reader *http.Request) {
-	// SELECT * FROM information_schema.tables WHERE table_schema='goLearn' AND table_name='moreInfo';
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		log.Fatal("Error opening DB: ", err)
-		sendJSONResponse(writer, 500, "Internal Server Error", "ERROR CONNECTING DATABASE")
-		return
-	}
-	defer db.Close()
-	res, err := db.Query("SELECT * FROM information_schema.tables WHERE table_schema='goLearn' AND table_name='teachers'")
-	if err != nil {
-		fmt.Println("database not defined")
-
-		sendJSONResponse(writer, 500, "Internal Server Error", "CANNOT FIND DATABASE")
-		return
-	}
-	if !res.Next() {
-		_, err = db.Exec("CREATE TABLE teachers (Tid int NOT NULL UNIQUE, Name varchar(255), ClassAllocated varchar(4), PRIMARY KEY(Tid))")
-		if err != nil {
-			fmt.Println("ISSUE WHILE CREATING TABLE")
-			sendJSONResponse(writer, 500, "Internal Server Error", "ERROR CREATING TABLE")
-			return
-		}
-		fmt.Println("table created")
-	}
-	defer res.Close()
-
-	body, err := io.ReadAll(reader.Body)
-	if err != nil {
-		fmt.Println(err)
-		sendJSONResponse(writer, 404, "Not Found", "BODY UNREADABLE")
-		return
-	}
-	var data TeacherInfo
-	if err = json.Unmarshal(body, &data); err != nil {
-		fmt.Println(err)
-		sendJSONResponse(writer, 404, "Not Found", "REQUIRED FIELDS EMPTY")
-		return
-	}
-	transisiton, err := db.Begin()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	_, err = db.Exec(`INSERT INTO teachers (Tid, Name, ClassAllocated) VALUES (?,?,?)`, data.Tid, data.Name, data.ClassAllocated)
-	if err != nil {
-		fmt.Println(err)
-		transisiton.Rollback()
-	}
-	err = transisiton.Commit()
-	if err != nil {
-		panic(err)
-	}
-	sendJSONResponse(writer, 200, "Ok", "DATA ADDED SUCCESSFULLY")
-	fmt.Println("commited and saved successfully")
-}
-
-func AddTeacherMoreInfo(writer http.ResponseWriter, reader *http.Request) {
+func AddStudent(ctx *gin.Context) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		fmt.Println(err)
-		sendJSONResponse(writer, 500, "Internal Server Error", "CANNOT CONNECT TO DB")
+		return
 	}
 	defer db.Close()
-	res, err := db.Query("SHOW TABLES LIKE 'teacherMoreInfo'")
-	if err != nil {
-		fmt.Println(err)
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "teacher" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorizes access"})
 		return
-	}
-	if !res.Next() {
-		_, err = db.Exec("CREATE TABLE teacherMoreInfo (Tid int NOT NULL, SubId int NOT NULL, Section varchar(4), FOREIGN KEY (Tid) REFERENCES teachers(Tid), FOREIGN KEY (SubId) REFERENCES subjects(SubId) )")
+	} else {
+		var studentData struct {
+			GR_NO       int    `json:"grNo" binding:"required"`
+			StudentPwd  string `json:"studPwd" binding:"required"`
+			UserRole    string `json:"userRole" binding:"required"`
+			StudentName string `json:"studName" binding:"required"`
+			Std         int    `json:"std" binding:"required"`
+			Section     string `json:"section" binding:"required"`
+		}
+		err = ctx.Bind(&studentData)
 		if err != nil {
-			fmt.Println("ISSUE WHILE CREATING TABLE")
-			sendJSONResponse(writer, 500, "Internal Server Error", "ERROR CREATING TABLE")
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "cannot read body"})
 			return
 		}
-		fmt.Println("table created")
+		_, err = db.Exec("INSERT INTO students (grNo, sPwd, userRole, studName, std, section) VALUES (?,?,?,?,?,?)", studentData.GR_NO, studentData.StudentPwd, studentData.UserRole, studentData.StudentName, studentData.Std, studentData.Section)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while inserting into db"})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": "student created"})
 	}
-	defer res.Close()
-	body, err := io.ReadAll(reader.Body)
-	if err != nil {
-		fmt.Println(err)
-		sendJSONResponse(writer, 500, "Internal Server Error", "UNABLE TO READ BODY")
-		return
-	}
-	var data TeacherSubAllocation
-	if err = json.Unmarshal(body, &data); err != nil {
-		fmt.Println(err)
-		sendJSONResponse(writer, 500, "Internal Server Error", "UNMARSHALING ERROR")
-		return
-	}
-
-	if _, err := db.Exec("INSERT INTO teacherMoreInfo (Tid, SubId, Section) VALUES (?,?,?)", data.Tid, data.SubId, data.Section); err != nil {
-		fmt.Println(err)
-		sendJSONResponse(writer, 500, "Internal Server Error", "UNABLE TO INSERT INTO DB")
-		return
-	}
-	sendJSONResponse(writer, 200, "Ok", "DATA SAVED SUCCESSFULLY")
 }
 
-func AddReviews(writer http.ResponseWriter, reader *http.Request) {
+func EditStud(ctx *gin.Context) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		fmt.Println(err)
-		sendJSONResponse(writer, 500, "Internal Server Error", "CANNOT CONNECT TO DB")
+		return
 	}
 	defer db.Close()
-	res, err := db.Query("SHOW TABLES LIKE 'reviews'")
-	if err != nil {
-		fmt.Println(err)
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "teacher" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorizes access"})
 		return
-	}
-	if !res.Next() {
-		_, err = db.Exec("CREATE TABLE reviews (Tid int NOT NULL, RollNo int NOT NULL, Review varchar(255), FOREIGN KEY (Tid) REFERENCES teachers(Tid), FOREIGN KEY (RollNo) REFERENCES students(RollNo))")
+	} else {
+		type EditBody struct {
+			GR_No       int    `json:"grNo" binding:"required"`
+			StudentPwd  string `json:"studPwd"`
+			UserRole    string `json:"userRole"`
+			StudentName string `json:"studName"`
+			Std         int    `json:"std"`
+			Section     string `json:"section"`
+		}
+		var editBody EditBody
+		err = ctx.Bind(&editBody)
 		if err != nil {
-			fmt.Println(err)
-			sendJSONResponse(writer, 500, "Internal Server Error", "ERROR CREATING TABLE")
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
 			return
 		}
-		fmt.Println("table created")
+		var defaultData EditBody
+		err = db.QueryRow("SELECT * FROM students WHERE grNo=?", editBody.GR_No).Scan(&defaultData.GR_No, &defaultData.StudentPwd, &defaultData.UserRole, &defaultData.StudentName, &defaultData.Std, &defaultData.Section)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
+			return
+		}
+		dbstr := "UPDATE students SET "
+		var conditions []string
+		if editBody.StudentPwd != "" {
+			conditions = append(conditions, ("sPwd = '" + editBody.StudentPwd + "'"))
+		}
+		if editBody.StudentName != "" {
+			conditions = append(conditions, ("studName = '" + editBody.StudentName + "'"))
+		}
+		if editBody.Std != 0 && editBody.Std <= 12 && editBody.Std > 0 {
+			conditions = append(conditions, ("std = " + strconv.Itoa(editBody.Std)))
+		}
+		if editBody.Section != "" {
+			conditions = append(conditions, ("section = '" + editBody.Section + "'"))
+		}
+		for i, v := range conditions {
+			dbstr += v
+			if i != len(conditions)-1 {
+				dbstr += ","
+			}
+		}
+		dbstr += ("WHERE grNo = " + strconv.Itoa(editBody.GR_No))
+
+		_, err = db.Exec(dbstr)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while updating db"})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": "student updated successfully"})
+		return
 	}
-	defer res.Close()
-	body, err := io.ReadAll(reader.Body)
+}
+
+func CreateSub(ctx *gin.Context) {
+
+}
+
+func EditSub(ctx *gin.Context) {
+
+}
+
+func AddReviews(ctx *gin.Context) {
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		fmt.Println(err)
-		sendJSONResponse(writer, 500, "Internal Server Error", "UNABLE TO READ BODY")
 		return
 	}
-	var data TeacherSubAllocation
-	if err = json.Unmarshal(body, &data); err != nil {
+	defer db.Close()
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "teacher" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorizes access"})
+		return
+	}
+	tid, exist := ctx.Get("UiD")
+	if !exist || tid == nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error setting your id"})
+		return
+	}
+	var reviewInfo struct {
+		StudId  int    `json:"grNo" binding:"required"`
+		Comment string `json:"comment" binding:"required"`
+	}
+	err = ctx.BindJSON(&reviewInfo)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unable to read the data sent"})
+	}
+	if _, err := db.Exec("INSERT INTO reviews (tId, grNo, comment) VALUES (?,?,?)", tid.(string), reviewInfo.StudId, reviewInfo.Comment); err != nil {
 		fmt.Println(err)
-		sendJSONResponse(writer, 500, "Internal Server Error", "UNMARSHALING ERROR")
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while inserting error"})
 		return
 	}
+	ctx.JSON(http.StatusOK, gin.H{"output": "added successfully"})
+	return
+}
 
-	if _, err := db.Exec("INSERT INTO reviews (Tid, SubId, Section) VALUES (?,?,?)", data.Tid, data.SubId, data.Section); err != nil {
+func Performance(ctx *gin.Context) {
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
 		fmt.Println(err)
-		sendJSONResponse(writer, 500, "Internal Server Error", "UNABLE TO INSERT INTO DB")
 		return
 	}
-	sendJSONResponse(writer, 200, "Ok", "DATA SAVED SUCCESSFULLY")
+	defer db.Close()
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "teacher" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorizes access"})
+		return
+	}
+	tid, exist := ctx.Get("UiD")
+	if !exist || tid == nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error setting your id"})
+		return
+	}
+	res := db.QueryRow("SELECT stdAllocated FROM teachers WHERE tId = ?", tid)
+	var std int
+	if err = res.Scan(&std); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
+		return
+	}
+	type Teachers struct {
+		Tid                 string
+		TName               string
+		StdAllocated        int
+		SubName             string
+		TotalTheoryMarks    int
+		TotalPracticalMarks int
+	}
+	var result []Teachers
+	res2, err := db.Query("SELECT tId FROM teachers WHERE stdAllocated=? AND subId IS NOT NULL", std)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong hwile fetching db"})
+		return
+	}
+	var tempres Teachers
+	for res2.Next() {
+		var temp any
+		err = res2.Scan(&temp)
+		if err != nil {
+			fmt.Println("cannot scan", err)
+		} else {
+			res3, err := db.Query("SELECT t.tId, t.tName, t.stdAllocated, s.subName, SUM(m.theoryM) AS totalTheory, SUM(m.practicalM) AS totalPractical FROM marks m INNER JOIN students st ON st.grNo = m.grNo LEFT JOIN subjects s ON m.subId = s.subId LEFT JOIN teachers t ON s.subId = t.subId WHERE t.tId = ? AND t.stdAllocated = st.std GROUP BY t.tId, t.tName, s.subName", temp)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong hwile fetching db"})
+				return
+			}
+			if res3.Next() {
+				err = res3.Scan(&tempres.Tid, &tempres.TName, &tempres.StdAllocated, &tempres.SubName, &tempres.TotalTheoryMarks, &tempres.TotalPracticalMarks)
+				if err != nil {
+					fmt.Println("error finding data", err)
+					return
+				}
+				result = append(result, tempres)
+			}
+		}
+	}
+	fmt.Println(result)
+	ctx.JSON(http.StatusOK, gin.H{"output": result})
+	return
 }
