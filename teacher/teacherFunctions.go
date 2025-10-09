@@ -191,7 +191,7 @@ func EditSub(ctx *gin.Context) {
 		}
 		defer db.Close()
 		type EditBody struct {
-			SubId    int    `json:"subId"`
+			SubId    int    `json:"subId" binding:"required"`
 			SubName  string `json:"subName"`
 			LevelStd int    `json:"levelStd"`
 			Credits  int    `json:"credits"`
@@ -323,12 +323,15 @@ func EditMarks(ctx *gin.Context) {
 			return
 		}
 		dbstr := "UPDATE marks SET "
+		changeOccur := false
 		var conditions []string
 		if editBody.TheoryMarks != defaultData.TheoryMarks && editBody.TheoryMarks <= 80 && editBody.TheoryMarks >= 0 {
 			conditions = append(conditions, ("theoryM = " + strconv.Itoa(editBody.TheoryMarks)))
+			changeOccur = true
 		}
 		if editBody.PracticalMarks != defaultData.PracticalMarks && editBody.PracticalMarks <= 20 && editBody.PracticalMarks >= 0 {
 			conditions = append(conditions, ("practicalM = " + strconv.Itoa(editBody.PracticalMarks)))
+			changeOccur = true
 		}
 		needComma := false
 		for i, v := range conditions {
@@ -341,16 +344,23 @@ func EditMarks(ctx *gin.Context) {
 		if needComma {
 			dbstr += ","
 		}
-		dbstr += fmt.Sprintf(" grade = '%s' ", gradeCalculator(editBody.TheoryMarks+editBody.PracticalMarks))
+		if changeOccur {
+			dbstr += fmt.Sprintf(" grade = '%s' ", gradeCalculator(editBody.TheoryMarks+editBody.PracticalMarks))
+		}
 		dbstr += fmt.Sprintf("WHERE grNo = %s AND subId = %s", strconv.Itoa(editBody.GrNo), strconv.Itoa(editBody.SubId))
 		fmt.Println(dbstr)
-		_, err = db.Exec(dbstr)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while updating db"})
+		if changeOccur {
+			_, err = db.Exec(dbstr)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while updating db"})
+				return
+			}
+			ctx.JSON(http.StatusOK, gin.H{"output": "student updated successfully"})
+			return
+		} else {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "no changes specified"})
 			return
 		}
-		ctx.JSON(http.StatusOK, gin.H{"output": "student updated successfully"})
-		return
 	} else {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized user"})
 		return
@@ -477,11 +487,11 @@ func DisplaySubject(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
 			return
 		}
+		defer db.Close()
 		res, err := db.Query(dbstr)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot fetch from db"})
 		}
-		defer db.Close()
 		type output struct {
 			SubId   int    `json:"subjectId"`
 			SubName string `json:"subjectName"`
@@ -501,6 +511,73 @@ func DisplaySubject(ctx *gin.Context) {
 		return
 	} else {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
+		return
+	}
+}
+
+func DelStud(ctx *gin.Context) {
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "teacher" {
+		fmt.Println("no token found")
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
+		return
+	}
+	if role == "teacher" {
+		var stdGrno struct {
+			GRno int `json:"grNo" binding:"required"`
+		}
+		if err := ctx.Bind(&stdGrno); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unable to read body"})
+			return
+		}
+
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
+			return
+		}
+		defer db.Close()
+		if _, err = db.Exec("DELETE FROM students WHERE grNo = ?", stdGrno.GRno); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error in DB, cant delete"})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": "DELETED SUCCESSFULLY"})
+	} else {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
+		return
+	}
+}
+
+func DelSub(ctx *gin.Context) {
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "teacher" {
+		fmt.Println("no token found")
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
+		return
+	}
+	if role == "teacher" {
+		var subid struct {
+			SubId int `json:"subid" binding:"required"`
+		}
+		if err := ctx.BindJSON(&subid); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unable to read body"})
+			return
+		}
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
+			return
+		}
+		defer db.Close()
+		if _, err = db.Exec("DELETE FROM subjects WHERE subId = ?", subid.SubId); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": "DELETED SUCCESSFULLY"})
+
+	} else {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
+		return
 	}
 }
 

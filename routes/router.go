@@ -33,8 +33,10 @@ func InitializeRouter() *gin.Engine {
 			teach.PUT("/updateSub", teacher.EditSub)
 			teach.POST("/enterMarks", teacher.EnterMarks)
 			teach.PUT("/updateMarks", teacher.EditMarks)
-			teach.GET("/displaySub", student.DisplayStudents)
+			teach.GET("/displaySub", student.DisplaySubject)
 			teach.POST("/addReview", teacher.AddReviews)
+			teach.DELETE("/delStudent", teacher.DelStud)
+			teach.DELETE("/delSubject", teacher.DelSub)
 		}
 	}
 	{
@@ -43,6 +45,8 @@ func InitializeRouter() *gin.Engine {
 		{
 			admn.GET("/pendingRequest", admin.ShowPendingReq)
 			admn.POST("/acceptRequest", admin.AcceptPendingReq)
+			admn.POST("/rejectRequest", admin.RejectRequest)
+			admn.DELETE("/delTeacher", admin.DeleteTeacher)
 		}
 	}
 	return r

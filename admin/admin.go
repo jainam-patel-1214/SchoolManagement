@@ -2,6 +2,7 @@ package admin
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -52,7 +53,7 @@ func AcceptPendingReq(ctx *gin.Context) {
 			UserName string `json:"uName" binding:"required"`
 			UserPwd  string `json:"uPwd" binding:"required"`
 			UserRole string `json:"uRole" binding:"required"`
-			UserId   any    `json:"Uid" binding:"required"`
+			UserId   any    `json:"Uid"`
 			Std      int    `json:"std"`
 			Section  string `json:"section"`
 			SubId    int    `json:"subId"`
@@ -64,7 +65,7 @@ func AcceptPendingReq(ctx *gin.Context) {
 		}
 		switch body.UserRole {
 		case "student":
-			if body.Std == 0 || body.Section == "" || body.UserId == 0 || body.UserName == "" || body.UserPwd == "" {
+			if body.Std == 0 || body.Section == "" || body.UserId == 0 || body.UserId == "" || body.UserName == "" || body.UserPwd == "" {
 				ctx.JSON(http.StatusBadRequest, gin.H{"error": "fill userid/std/section accurately"})
 				return
 			}
@@ -140,5 +141,73 @@ func ShowPendingReq(ctx *gin.Context) {
 			result = append(result, temp)
 		}
 		ctx.JSON(http.StatusOK, gin.H{"output": result})
+	}
+}
+
+func DeleteTeacher(ctx *gin.Context) {
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "admin" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
+		return
+	}
+	if role == "admin" {
+		var tid struct {
+			TId string `json:"teacherId" binding:"required"`
+		}
+		if err := ctx.Bind(&tid); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unable to read body"})
+			return
+		}
+
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
+			return
+		}
+		defer db.Close()
+		if _, err = db.Exec("DELETE FROM teachers WHERE tId = ?", tid.TId); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error in DB, cant delete"})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": "DELETED SUCCESSFULLY"})
+	} else {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
+		return
+	}
+}
+
+func RejectRequest(ctx *gin.Context) {
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "admin" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
+		return
+	} else if role == "admin" {
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cant connect to db"})
+			return
+		}
+		defer db.Close()
+		var body struct {
+			UserName string `json:"uName" binding:"required"`
+			UserPwd  string `json:"uPwd" binding:"required"`
+			UserRole string `json:"uRole" binding:"required"`
+			UserId   any    `json:"Uid"`
+			Std      int    `json:"std"`
+			Section  string `json:"section"`
+			SubId    int    `json:"subId"`
+		}
+		err = ctx.Bind(&body)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error reading body"})
+			return
+		}
+		if _, err = db.Exec(fmt.Sprintf("DELETE FROM pendingApplications WHERE username='%s' AND user_pwd='%s' AND role_requested = '%s'", body.UserName, body.UserPwd, body.UserRole)); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while rejecting"})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": "rejected successfully"})
+	} else {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
 	}
 }

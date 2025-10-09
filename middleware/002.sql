@@ -39,19 +39,6 @@ INSERT INTO subjects (subId, subName, levelStd, credits) VALUES
 (109, 'Computer Science', 4, 3),
 (110, 'Art', 3, 2);
 
--- Inserts for teachersSubInfo
-INSERT INTO teachersSubInfo (tId, subId, std, section) VALUES
-('T001', 101, '5','A'),
-('T002', 102, '6','B'),
-('T003', 103, '7','A'),
-('T004', 104, '8','C'),
-('T005', 105, '9','B'),
-('T006', 106, '10','A'),
-('T007', 107, '11','C'),
-('T008', 108, '12','B'),
-('T009', 109, '4','A'),
-('T010', 110, '3','C');
-
 -- Inserts for marks
 INSERT INTO marks (grNo, subId, theoryM, practicalM, grade) VALUES
 (1, 102, 65, 20, 'A'),
