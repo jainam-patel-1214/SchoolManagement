@@ -106,7 +106,7 @@ func AcceptPendingReq(ctx *gin.Context) {
 	}
 }
 
-func ShowRendingReq(ctx *gin.Context) {
+func ShowPendingReq(ctx *gin.Context) {
 	role, exist := ctx.Get("userrole")
 	if !exist || role != "admin" {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})

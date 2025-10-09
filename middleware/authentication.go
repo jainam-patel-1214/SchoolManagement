@@ -65,6 +65,7 @@ func CreateSession(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, err)
 			return
 		}
+		fmt.Println("in student")
 		claim.Uid = strconv.Itoa(grNo)
 		claim.Role = role
 		claim.RegisteredClaims.IssuedAt = jwt.NewNumericDate(time.Now())
@@ -83,14 +84,24 @@ func CreateSession(ctx *gin.Context) {
 				ctx.JSON(http.StatusInternalServerError, err)
 				return
 			}
+			fmt.Println("in teacher")
 			claim.Uid = tId
 			claim.Role = role
 			claim.RegisteredClaims.IssuedAt = jwt.NewNumericDate(time.Now())
 			claim.RegisteredClaims.ExpiresAt = jwt.NewNumericDate(temptime)
+		} else {
+			var aId string
+			err := db.QueryRow("SELECT admin_id FROM admins WHERE admin_id=? AND admin_pwd=? ", credentials.UserId, credentials.Password).Scan(&aId)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "invalid credentials"})
+				return
+			}
+			fmt.Println("in admin")
+			claim.Uid = aId
+			claim.Role = "admin"
+			claim.RegisteredClaims.IssuedAt = jwt.NewNumericDate(time.Now())
+			claim.RegisteredClaims.ExpiresAt = jwt.NewNumericDate(temptime)
 		}
-	} else {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "invalid credentials"})
-		return
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 	tokenString, err := token.SignedString([]byte("9tvfPMwMVQHdksYp"))
@@ -121,7 +132,7 @@ func ValidateSession() gin.HandlerFunc {
 				return
 			}
 			defer db.Close()
-			fmt.Println(userCookie)
+			// fmt.Println(userCookie)
 			claim := &JwtClaims{}
 
 			token, err := jwt.ParseWithClaims(userCookie, claim, func(t *jwt.Token) (any, error) {
@@ -136,7 +147,7 @@ func ValidateSession() gin.HandlerFunc {
 				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
 				return
 			}
-			if claim.Role != "student" && claim.Role != "teacher" {
+			if claim.Role != "student" && claim.Role != "teacher" && claim.Role != "admin" {
 				fmt.Println("\n\n\n role \n\n", claim.Role)
 				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token provided"})
 				return

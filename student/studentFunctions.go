@@ -131,12 +131,12 @@ func DisplayStudents(ctx *gin.Context) {
 
 func DisplaySubject(ctx *gin.Context) {
 	role, exist := ctx.Get("userrole")
-	if !exist || role != "student" {
+	if !exist || (role != "student" && role != "teacher") {
 		fmt.Println("no token found")
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
 		return
 	}
-	if role == "student" {
+	if role == "student" || role == "teacher" {
 		var constraints struct {
 			Std int `json:"std" binding:"required"`
 		}
@@ -158,7 +158,7 @@ func DisplaySubject(ctx *gin.Context) {
 		}
 		defer db.Close()
 		type output struct {
-			SubId   int    `json:"studentId"`
+			SubId   int    `json:"subjectId"`
 			SubName string `json:"subjectName"`
 			Std     int    `json:"level"`
 			Credits int    `json:"credits"`
@@ -177,7 +177,6 @@ func DisplaySubject(ctx *gin.Context) {
 	} else {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
 	}
-	fmt.Println("trying debug")
 }
 
 func Report(ctx *gin.Context) {

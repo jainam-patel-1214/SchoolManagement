@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"example.com/main/admin"
 	"example.com/main/middleware"
 	"example.com/main/student"
 	"example.com/main/teacher"
@@ -11,7 +12,7 @@ func InitializeRouter() *gin.Engine {
 	r := gin.Default()
 	// CreateSession is not actually a middleware but validate session is
 	r.POST("/login", middleware.CreateSession)
-	r.POST("/register")
+	r.POST("/register", admin.CreatePendingReq)
 	{
 		stud := r.Group("/student")
 		stud.Use(middleware.ValidateSession())
@@ -28,12 +29,20 @@ func InitializeRouter() *gin.Engine {
 			teach.GET("/displayPerformance", teacher.Performance)
 			teach.POST("/createStud", teacher.AddStudent)
 			teach.PUT("/updateStud", teacher.EditStud)
-			teach.POST("/createSub")
-			teach.PUT("/updateSub")
-			teach.POST("/enterMarks")
-			teach.PUT("/updateMarks")
-			teach.GET("/displaySub")
+			teach.POST("/createSub", teacher.CreateSub)
+			teach.PUT("/updateSub", teacher.EditSub)
+			teach.POST("/enterMarks", teacher.EnterMarks)
+			teach.PUT("/updateMarks", teacher.EditMarks)
+			teach.GET("/displaySub", student.DisplayStudents)
 			teach.POST("/addReview", teacher.AddReviews)
+		}
+	}
+	{
+		admn := r.Group("/admin")
+		admn.Use(middleware.ValidateSession())
+		{
+			admn.GET("/pendingRequest", admin.ShowPendingReq)
+			admn.POST("/acceptRequest", admin.AcceptPendingReq)
 		}
 	}
 	return r

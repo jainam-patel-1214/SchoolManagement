@@ -96,16 +96,16 @@ func EditStud(ctx *gin.Context) {
 		}
 		dbstr := "UPDATE students SET "
 		var conditions []string
-		if editBody.StudentPwd != "" {
+		if editBody.StudentPwd != defaultData.StudentPwd {
 			conditions = append(conditions, ("sPwd = '" + editBody.StudentPwd + "'"))
 		}
-		if editBody.StudentName != "" {
+		if editBody.StudentName != defaultData.StudentName {
 			conditions = append(conditions, ("studName = '" + editBody.StudentName + "'"))
 		}
-		if editBody.Std != 0 && editBody.Std <= 12 && editBody.Std > 0 {
+		if editBody.Std != defaultData.Std && editBody.Std <= 12 && editBody.Std > 0 {
 			conditions = append(conditions, ("std = " + strconv.Itoa(editBody.Std)))
 		}
-		if editBody.Section != "" {
+		if editBody.Section != defaultData.Section {
 			conditions = append(conditions, ("section = '" + editBody.Section + "'"))
 		}
 		for i, v := range conditions {
@@ -127,10 +127,234 @@ func EditStud(ctx *gin.Context) {
 }
 
 func CreateSub(ctx *gin.Context) {
-
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "teacher" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorizes access"})
+		return
+	}
+	if role == "teacher" {
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot connect to db"})
+			return
+		}
+		defer db.Close()
+		var subInfo struct {
+			SubId    int    `json:"subId" binding:"required"`
+			SubName  string `json:"subName" binding:"required"`
+			LevelStd int    `json:"levelStd" binding:"required"`
+			Credits  int    `json:"credits" binding:"required"`
+		}
+		if err = ctx.Bind(&subInfo); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error processing data"})
+			return
+		}
+		var limit int
+		err = db.QueryRow("SELECT subject_limit FROM subjectAllocation WHERE std = ?", subInfo.LevelStd).Scan(&limit)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error processing data"})
+			return
+		}
+		var count int
+		err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE levelStd = ?", subInfo.LevelStd).Scan(&count)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error processing data"})
+			return
+		}
+		if count >= limit {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("limit of subject for standard %d reached", subInfo.LevelStd)})
+			return
+		}
+		if _, err = db.Exec("INSERT INTO subjects (subId,subName,levelStd,credits) VALUES (?,?,?,?)", subInfo.SubId, subInfo.SubName, subInfo.LevelStd, subInfo.Credits); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error inserting data"})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": "inserted successfully"})
+		return
+	} else {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized user"})
+		return
+	}
 }
 
 func EditSub(ctx *gin.Context) {
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "teacher" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorizes access"})
+		return
+	}
+	if role == "teacher" {
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cant connect db"})
+			return
+		}
+		defer db.Close()
+		type EditBody struct {
+			SubId    int    `json:"subId"`
+			SubName  string `json:"subName"`
+			LevelStd int    `json:"levelStd"`
+			Credits  int    `json:"credits"`
+		}
+		var editBody EditBody
+		err = ctx.Bind(&editBody)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
+			return
+		}
+		var defaultData EditBody
+		err = db.QueryRow("SELECT * FROM subjects WHERE subId=?", editBody.SubId).Scan(&defaultData.SubId, &defaultData.SubName, &defaultData.LevelStd, &defaultData.Credits)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
+			return
+		}
+		dbstr := "UPDATE subjects SET "
+		var conditions []string
+		if editBody.SubId != defaultData.SubId {
+			conditions = append(conditions, ("subId = '" + strconv.Itoa(editBody.SubId) + "'"))
+		}
+		if editBody.SubName != defaultData.SubName {
+			conditions = append(conditions, ("subName = '" + editBody.SubName + "'"))
+		}
+		if editBody.LevelStd != defaultData.LevelStd && editBody.LevelStd <= 12 && editBody.LevelStd > 0 {
+			conditions = append(conditions, ("levelStd = " + strconv.Itoa(editBody.LevelStd)))
+		}
+		if editBody.Credits != defaultData.Credits {
+			conditions = append(conditions, ("credits = '" + strconv.Itoa(editBody.Credits) + "'"))
+		}
+		for i, v := range conditions {
+			dbstr += v
+			if i != len(conditions)-1 {
+				dbstr += ","
+			}
+		}
+		dbstr += ("WHERE subId = " + strconv.Itoa(editBody.SubId))
+
+		_, err = db.Exec(dbstr)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while updating db"})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": "subject updated successfully"})
+		return
+	} else {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized user"})
+		return
+	}
+}
+
+func EnterMarks(ctx *gin.Context) {
+
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "teacher" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorizes access"})
+		return
+	}
+	if role == "teacher" {
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot connect to db"})
+			return
+		}
+		defer db.Close()
+		var marks struct {
+			GrNo           int `json:"grNo" binding:"required"`
+			SubId          int `json:"subId" binding:"required"`
+			TheoryMarks    int `json:"theoryMarks" binding:"required"`
+			PracticalMarks int `json:"practicalMarks" binding:"required"`
+		}
+		if err = ctx.Bind(&marks); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
+			return
+		}
+		var amount int
+		err = db.QueryRow("SELECT COUNT(grNo) FROM marks WHERE grNo = ? AND subId = ?", marks.GrNo, marks.SubId).Scan(&amount)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
+			return
+		}
+		if amount > 0 {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "record already present please try updating it"})
+			return
+		}
+		if _, err = db.Exec("INSERT INTO marks (grNo,subId,theoryM,practicalM,grade) VALUES (?,?,?,?,?)", marks.GrNo, marks.SubId, marks.TheoryMarks, marks.PracticalMarks, gradeCalculator(marks.TheoryMarks+marks.PracticalMarks)); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error inserting data"})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": "inserted successfully"})
+		return
+	} else {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized user"})
+		return
+	}
+
+}
+func EditMarks(ctx *gin.Context) {
+
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "teacher" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorizes access"})
+		return
+	}
+	if role == "teacher" {
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cant connect db"})
+			return
+		}
+		defer db.Close()
+		type marks struct {
+			GrNo           int `json:"grNo" binding:"required"`
+			SubId          int `json:"subId" binding:"required"`
+			TheoryMarks    int `json:"theoryMarks"`
+			PracticalMarks int `json:"practicalMarks"`
+		}
+		var editBody marks
+		var tempgrade string
+		err = ctx.Bind(&editBody)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
+			return
+		}
+		var defaultData marks
+		err = db.QueryRow("SELECT * FROM marks WHERE grNo=?", editBody.GrNo).Scan(&defaultData.GrNo, &defaultData.SubId, &defaultData.TheoryMarks, &defaultData.PracticalMarks, &tempgrade)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
+			return
+		}
+		dbstr := "UPDATE marks SET "
+		var conditions []string
+		if editBody.TheoryMarks != defaultData.TheoryMarks && editBody.TheoryMarks <= 80 && editBody.TheoryMarks >= 0 {
+			conditions = append(conditions, ("theoryM = " + strconv.Itoa(editBody.TheoryMarks)))
+		}
+		if editBody.PracticalMarks != defaultData.PracticalMarks && editBody.PracticalMarks <= 20 && editBody.PracticalMarks >= 0 {
+			conditions = append(conditions, ("practicalM = " + strconv.Itoa(editBody.PracticalMarks)))
+		}
+		needComma := false
+		for i, v := range conditions {
+			dbstr += v
+			needComma = true
+			if i != len(conditions)-1 {
+				dbstr += ","
+			}
+		}
+		if needComma {
+			dbstr += ","
+		}
+		dbstr += fmt.Sprintf(" grade = '%s' ", gradeCalculator(editBody.TheoryMarks+editBody.PracticalMarks))
+		dbstr += fmt.Sprintf("WHERE grNo = %s AND subId = %s", strconv.Itoa(editBody.GrNo), strconv.Itoa(editBody.SubId))
+		fmt.Println(dbstr)
+		_, err = db.Exec(dbstr)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while updating db"})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": "student updated successfully"})
+		return
+	} else {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized user"})
+		return
+	}
 
 }
 
@@ -165,7 +389,6 @@ func AddReviews(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"output": "added successfully"})
-	return
 }
 
 func Performance(ctx *gin.Context) {
@@ -212,9 +435,9 @@ func Performance(ctx *gin.Context) {
 		if err != nil {
 			fmt.Println("cannot scan", err)
 		} else {
-			res3, err := db.Query("SELECT t.tId, t.tName, t.stdAllocated, s.subName, SUM(m.theoryM) AS totalTheory, SUM(m.practicalM) AS totalPractical FROM marks m INNER JOIN students st ON st.grNo = m.grNo LEFT JOIN subjects s ON m.subId = s.subId LEFT JOIN teachers t ON s.subId = t.subId WHERE t.tId = ? AND t.stdAllocated = st.std GROUP BY t.tId, t.tName, s.subName", temp)
+			res3, err := db.Query("SELECT t.tId, t.tName, t.stdAllocated, s.subName, SUM(m.theoryM) AS totalTheory, SUM(m.practicalM) AS totalPractical FROM marks m LEFT JOIN teachers t ON m.subId = t.subId INNER JOIN subjects s ON t.subId = s.subId WHERE t.tId = ? GROUP BY t.tId, t.tName, t.stdAllocated, s.subName", temp)
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong hwile fetching db"})
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
 				return
 			}
 			if res3.Next() {
@@ -229,5 +452,73 @@ func Performance(ctx *gin.Context) {
 	}
 	fmt.Println(result)
 	ctx.JSON(http.StatusOK, gin.H{"output": result})
-	return
+}
+
+func DisplaySubject(ctx *gin.Context) {
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "teacher" {
+		fmt.Println("no token found")
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
+		return
+	}
+	if role == "teacher" {
+		var constraints struct {
+			Std int `json:"std" binding:"required"`
+		}
+		if err := ctx.BindJSON(&constraints); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
+			return
+		}
+		dbstr := "SELECT * FROM subjects WHERE levelStd = " + strconv.Itoa(constraints.Std)
+		fmt.Println(dbstr)
+
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
+			return
+		}
+		res, err := db.Query(dbstr)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot fetch from db"})
+		}
+		defer db.Close()
+		type output struct {
+			SubId   int    `json:"subjectId"`
+			SubName string `json:"subjectName"`
+			Std     int    `json:"level"`
+			Credits int    `json:"credits"`
+		}
+		var queryres []output
+		for res.Next() {
+			var record output
+			if err := res.Scan(&record.SubId, &record.SubName, &record.Std, &record.Credits); err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot read database results"})
+				return
+			}
+			queryres = append(queryres, record)
+		}
+		ctx.JSON(http.StatusOK, gin.H{"result": queryres})
+		return
+	} else {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
+	}
+}
+
+func gradeCalculator(n int) string {
+	if n > 90 {
+		return "AA"
+	} else if n > 80 && n <= 90 {
+		return "AB"
+	} else if n > 70 && n <= 80 {
+		return "BB"
+	} else if n > 60 && n <= 70 {
+		return "BC"
+	} else if n > 50 && n <= 60 {
+		return "CC"
+	} else if n > 40 && n <= 50 {
+		return "CD"
+	} else if n > 30 && n <= 40 {
+		return "DD"
+	}
+	return "FF"
 }
