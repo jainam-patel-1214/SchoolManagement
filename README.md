@@ -1,4 +1,4 @@
-### BEFORE RUNNING PROJECT MOVE 002.sql into MIGRATIONS DIR SO YOU GET TEMPORARY DATA ADDED IN YOUR DATABASE
+## BEFORE RUNNING PROJECT MOVE 002.sql FROM `middleware` into `migration` DIR SO YOU GET TEMPORARY DATA ADDED IN YOUR DATABASE
 # register api
 
 - api -> post to <http://localhost:8090/register> body - user, pwd and role you want  
