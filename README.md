@@ -3,17 +3,21 @@
 - api -> post to <http://localhost:8090/register> body - user, pwd and role you want  
 - JSON TAGS REQUIRED - (roleReq,userName,pwd)
 
-- ``` curl -X POST <http://localhost:8090/register> \
+```
+- curl -X POST <http://localhost:8090/register> \
      -H "Content-Type: application/json" \
-     -d '{"roleReq": "student/teacher/admin", "userName": "name here","pwd":"8 digit pwd here"}' ```
+     -d '{"roleReq": "student/teacher/admin", "userName": "name here","pwd":"8 digit pwd here"}' 
+```
 
 # login api
 
 - api -> used to login. output would be a token
 
-- ``` curl -X POST <http://localhost:8090/login> \
+```
+- curl -X POST <http://localhost:8090/login> \
      -H "Content-Type: application/json" \
-     -d '{"userId": 1, "password": "pass1234"}' ```
+     -d '{"userId": 1, "password": "pass1234"}' 
+```
 
 # STUDENTS API
 
@@ -23,10 +27,13 @@
 
 - it displays other students data according to information required
 
-- ``` curl -X GET <http://localhost:8090/student/display> \
+```
+- curl -X GET <http://localhost:8090/student/display> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d '{"minPercent": 50}' ```
+     -d '{"minPercent": 50}' 
+```
+
 - you can include other tags like viewByStd,viewBySection,maxPercent, single or multiple (view by section is string, rest are int)
 
 ## display list of subjects GET to <http://localhost:8090/student/displaySub>
@@ -34,19 +41,23 @@
 - it displays subjects in particular standard
 - JSON TAGS - (std)
 
-- ``` curl -X GET <http://localhost:8090/student/display> \
+```
+- curl -X GET <http://localhost:8090/student/display> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d '{"std": from 1 to 12}' ```
+     -d '{"std": from 1 to 12}' 
+```
 
 ## display report of logged in student GET to <http://localhost:8090/student/report>
 
 - it displays report of that student who is logged in (token string jiski ho uska report)
 - JSON TAGS - nothing, just send token in userCookie
 
-- ``` curl -X GET <http://localhost:8090/student/report> \
+```
+- curl -X GET <http://localhost:8090/student/report> \
      -H "Content-Type: application/json" \
-     -b "userCookie=string.string.string" \ ```
+     -b "userCookie=string.string.string" \ 
+```
 
 # TEACHERS API
 
@@ -54,130 +65,156 @@
 
 - it displays performance of teacher logged in + performance of other teachers who are in same std assigned as logged in teacher eg- all teachers of standard x are displayed with total marks of students
 
-- ``` curl -X GET <http://localhost:8090/teacher/displayPerformance> \
+```
+- curl -X GET <http://localhost:8090/teacher/displayPerformance> \
      -H "Content-Type: application/json" \
-     -b "userCookie=string.string.string" \ ```
+     -b "userCookie=string.string.string" \ 
+```
 
 ## POST to <http://localhost:8090/teacher/createStud>
 
 - it created student
 - JSON TAGS - (grNo,studPwd, userRole,studName std, section)
 
-- ``` curl -X POST <http://localhost:8090/teacher/createStud> \
+```
+- curl -X POST <http://localhost:8090/teacher/createStud> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d {"grNo":int,"studPwd":"any string", "userRole":"not required to send but if u wish then student only","studName":"name", "std":int between 1 and 12, "section":"A OR B OR C... whatever you wish"} ```
+     -d {"grNo":int,"studPwd":"any string", "userRole":"not required to send but if u wish then student only","studName":"name", "std":int between 1 and 12, "section":"A OR B OR C... whatever you wish"} 
+```
 
 ## PUT to <http://localhost:8090/teacher/updateStud>
 
 - it updates student
 - JSON TAGS - (grNo)required,  optional tags (studPwd, userRole,studName std, section)
 
-- ``` curl -X PUT <http://localhost:8090/teacher/updateStud> \
+```
+- curl -X PUT <http://localhost:8090/teacher/updateStud> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d {"grNo":int student id,"studPwd":"any string", "userRole":"not required to send but if u wish then student only","studName":"name", "std":int between 1 and 12, "section":"A OR B OR C... whatever you wish"} ```
+     -d {"grNo":int student id,"studPwd":"any string", "userRole":"not required to send but if u wish then student only","studName":"name", "std":int between 1 and 12, "section":"A OR B OR C... whatever you wish"} 
+```
 
 ## POST to <http://localhost:8090/teacher/createSub>
 
 - it create subject
 - JSON TAGS - (subId,subName,levelStd,credits)
 
-- ``` curl -X POST <http://localhost:8090/teacher/createSub> \
+```
+- curl -X POST <http://localhost:8090/teacher/createSub> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d {"subId":int,"subName":"any name of subject string", "levelStd":"int->it is standard in which subject would be taken","credits":int->it is credit of subject} ```
+     -d {"subId":int,"subName":"any name of subject string", "levelStd":"int->it is standard in which subject would be taken","credits":int->it is credit of subject} 
+```
 
 ## PUT to <http://localhost:8090/teacher/updateSub>
 
 - it updates subject
 - JSON TAGS - (subId)required , optional tags (subName,levelStd,credits)
 
-- ``` curl -X PUT <http://localhost:8090/teacher/updateSub> \
+```
+- curl -X PUT <http://localhost:8090/teacher/updateSub> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d {"subId":int,"subName":"any name of subject string", "levelStd":"int->it is standard in which subject would be taken","credits":int->it is credit of subject} ```
+     -d {"subId":int,"subName":"any name of subject string", "levelStd":"int->it is standard in which subject would be taken","credits":int->it is credit of subject} 
+```
 
 ## POST to <http://localhost:8090/teacher/enterMarks>
 
 - it help to enter mark for particular student and respective subject
 - JSON TAGS - (grNo, subId,theoryMarks,practicalMarks) all required
 
-- ``` curl -X GET <http://localhost:8090/teacher/enterMarks> \
+```
+-  curl -X GET <http://localhost:8090/teacher/enterMarks> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d {"grNo":int student id,"subId":int ,"theoryMarks":int betw 0 and 80,"practicalMarks": int between 0 and 20} ```
+     -d {"grNo":int student id,"subId":int ,"theoryMarks":int betw 0 and 80,"practicalMarks": int between 0 and 20} 
+```
 
 ## PUT to <http://localhost:8090/teacher/updateMarks>
 
 - it help to update mark for particular student and respective subject
 - JSON TAGS - (grNo, subId) required ones , optional ones (theoryMarks,practicalMarks) use anyone or both or none
 
-- ``` curl -X PUT <http://localhost:8090/teacher/updateMarks> \
+```
+- curl -X PUT <http://localhost:8090/teacher/updateMarks> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d {"grNo":int here,"subId":int here, ... enter theoryMarks,practicalMarks in int form which ever or both as you need} ```
+     -d {"grNo":int here,"subId":int here, ... enter theoryMarks,practicalMarks in int form which ever or both as you need} 
+```
 
 ## GET to <http://localhost:8090/teacher/displaySub>
 
 - it displays subjects in subjects
 - JSON TAGS - (std)
 
-- ``` curl -X GET <http://localhost:8090/teacher/displaySub> \
+```
+- curl -X GET <http://localhost:8090/teacher/displaySub> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d {"std":int here} ```
+     -d {"std":int here} 
+```
 
 ## POST to <http://localhost:8090/teacher/addReview>
 
 - it help to add review for student
 - JSON TAGS - (grNo,comment)
 
-- ``` curl -X POST <http://localhost:8090/teacher/addReview> \
+```
+- curl -X POST <http://localhost:8090/teacher/addReview> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d {"grNo":int,"comment":"any string eg - sincere student, acha baccha etc"} ```
+     -d {"grNo":int,"comment":"any string eg - sincere student, acha baccha etc"} 
+```
 
 ## DELETE to <http://localhost:8090/teacher/delSubject>
 
 - it help to DELETE SUBJECTS
 - JSON TAGS - (subid)
 
-- ``` curl -X DELETE <http://localhost:8090/teacher/delSubject> \
+```
+- curl -X DELETE <http://localhost:8090/teacher/delSubject> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d {"subid":give id here} ```
+     -d {"subid":give id here} 
+```
 
 ## DELETE to <http://localhost:8090/teacher/delStudent>
 
 - it help to DELETE students
 - JSON TAGS - (grNo)
 
-- ``` curl -X DELETE http://localhost:8090/teacher/delStudent \
+```
+- curl -X DELETE http://localhost:8090/teacher/delStudent \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d {"grNo":int,"studPwd":"any string", "userRole":"not required to send but if u wish then student only","studName":"name", "std":int between 1 and 12, "section":"A OR B OR C... whatever you wish"} ```
+     -d {"grNo":int,"studPwd":"any string", "userRole":"not required to send but if u wish then student only","studName":"name", "std":int between 1 and 12, "section":"A OR B OR C... whatever you wish"}
+```
 
-# TEACHERS API
+# ADMINS API
 
 ## GET to <http://localhost:8090/admin/pendingRequest>
 
 - it displays registeration requests from register
 - JSON TAGS - ()nothing just hit the api
 
-- ``` curl -X GET <http://localhost:8090/admin/pendingRequest> \
+```
+- curl -X GET <http://localhost:8090/admin/pendingRequest> \
      -H "Content-Type: application/json" \
-     -b "userCookie=string.string.string" \ ```
+     -b "userCookie=string.string.string" \
+```
 
 ## POST to <http://localhost:8090/admin/acceptRequest>
 
 - it displays registeration requests from register
 - JSON TAGS - (uName,uPwd,uRole)required ones,  tags filled according to role (std,section,subId) these arent required ones, can be sent optionally
 
-- ``` curl -X POST <http://localhost:8090/admin/acceptRequest> \
+```
+- curl -X POST <http://localhost:8090/admin/acceptRequest> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d {"uName":"name of user in registeration request","uPwd":"his pwd", "uRole":"role he selected","std":int here as above,"section": "string as above",subId:"send this is role is teacher and is assigned subject else not needed" } ```
+     -d {"uName":"name of user in registeration request","uPwd":"his pwd", "uRole":"role he selected","std":int here as above,"section": "string as above",subId:"send this is role is teacher and is assigned subject else not needed" }
+```
 
 ## DELETE to <http://localhost:8090/admin/rejectRequest>
 
@@ -185,16 +222,21 @@
 - JSON TAGS - (uName,uPwd,uRole)required ones
 - here tags would be automatically sent from ui
 
-- ``` curl -X DELETE <http://localhost:8090/admin/rejectRequest> \
+```
+- curl -X DELETE <http://localhost:8090/admin/rejectRequest> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d {"uName":"name of user in registeration request","uPwd":"his pwd", "uRole":"role he selected"} ```
+     -d {"uName":"name of user in registeration request","uPwd":"his pwd", "uRole":"role he selected"}
+```
 
 ## DELETE to <http://localhost:8090/admin/delTeacher>
 
 - it deleted teacher out of existence
 - JSON TAGS - (teacherId)
--``` curl -X DELETE <http://localhost:8090/admin/delTeacher> \
+
+```
+-  curl -X DELETE <http://localhost:8090/admin/delTeacher> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
-     -d {"teacherId":"string of tId"} ```
+     -d {"teacherId":"string of tId"} 
+```
