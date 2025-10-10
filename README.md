@@ -17,13 +17,15 @@
 
 # STUDENTS API
 
+## you would always receive userCookie aka token string in form of "some string.some string.some string" eg - aaaa.bbbbbbb.cccc
+
 ## Display GET to <http://localhost:8090/student/display>
 
 - it displays other students data according to information required
 
 - ``` curl -X GET <http://localhost:8090/student/display> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d '{"minPercent": 50}' ```
 - you can include other tags like viewByStd,viewBySection,maxPercent, single or multiple (view by section is string, rest are int)
 
@@ -34,7 +36,7 @@
 
 - ``` curl -X GET <http://localhost:8090/student/display> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d '{"std": from 1 to 12}' ```
 
 ## display report of logged in student GET to <http://localhost:8090/student/report>
@@ -44,7 +46,7 @@
 
 - ``` curl -X GET <http://localhost:8090/student/report> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \ ```
+     -b "userCookie=string.string.string" \ ```
 
 # TEACHERS API
 
@@ -54,7 +56,7 @@
 
 - ``` curl -X GET <http://localhost:8090/teacher/displayPerformance> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \ ```
+     -b "userCookie=string.string.string" \ ```
 
 ## POST to <http://localhost:8090/teacher/createStud>
 
@@ -63,7 +65,7 @@
 
 - ``` curl -X POST <http://localhost:8090/teacher/createStud> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d {"grNo":int,"studPwd":"any string", "userRole":"not required to send but if u wish then student only","studName":"name", "std":int between 1 and 12, "section":"A OR B OR C... whatever you wish"} ```
 
 ## PUT to <http://localhost:8090/teacher/updateStud>
@@ -73,7 +75,7 @@
 
 - ``` curl -X PUT <http://localhost:8090/teacher/updateStud> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d {"grNo":int student id,"studPwd":"any string", "userRole":"not required to send but if u wish then student only","studName":"name", "std":int between 1 and 12, "section":"A OR B OR C... whatever you wish"} ```
 
 ## POST to <http://localhost:8090/teacher/createSub>
@@ -83,7 +85,7 @@
 
 - ``` curl -X POST <http://localhost:8090/teacher/createSub> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d {"subId":int,"subName":"any name of subject string", "levelStd":"int->it is standard in which subject would be taken","credits":int->it is credit of subject} ```
 
 ## PUT to <http://localhost:8090/teacher/updateSub>
@@ -93,7 +95,7 @@
 
 - ``` curl -X PUT <http://localhost:8090/teacher/updateSub> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d {"subId":int,"subName":"any name of subject string", "levelStd":"int->it is standard in which subject would be taken","credits":int->it is credit of subject} ```
 
 ## POST to <http://localhost:8090/teacher/enterMarks>
@@ -103,7 +105,7 @@
 
 - ``` curl -X GET <http://localhost:8090/teacher/enterMarks> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d {"grNo":int student id,"subId":int ,"theoryMarks":int betw 0 and 80,"practicalMarks": int between 0 and 20} ```
 
 ## PUT to <http://localhost:8090/teacher/updateMarks>
@@ -113,7 +115,7 @@
 
 - ``` curl -X PUT <http://localhost:8090/teacher/updateMarks> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d {"grNo":int here,"subId":int here, ... enter theoryMarks,practicalMarks in int form which ever or both as you need} ```
 
 ## GET to <http://localhost:8090/teacher/displaySub>
@@ -123,7 +125,7 @@
 
 - ``` curl -X GET <http://localhost:8090/teacher/displaySub> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d {"std":int here} ```
 
 ## POST to <http://localhost:8090/teacher/addReview>
@@ -133,7 +135,7 @@
 
 - ``` curl -X POST <http://localhost:8090/teacher/addReview> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d {"grNo":int,"comment":"any string eg - sincere student, acha baccha etc"} ```
 
 ## DELETE to <http://localhost:8090/teacher/delSubject>
@@ -143,7 +145,7 @@
 
 - ``` curl -X DELETE <http://localhost:8090/teacher/delSubject> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d {"subid":give id here} ```
 
 ## DELETE to <http://localhost:8090/teacher/delStudent>
@@ -153,7 +155,7 @@
 
 - ``` curl -X DELETE http://localhost:8090/teacher/delStudent \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d {"grNo":int,"studPwd":"any string", "userRole":"not required to send but if u wish then student only","studName":"name", "std":int between 1 and 12, "section":"A OR B OR C... whatever you wish"} ```
 
 # TEACHERS API
@@ -165,7 +167,7 @@
 
 - ``` curl -X GET <http://localhost:8090/admin/pendingRequest> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \ ```
+     -b "userCookie=string.string.string" \ ```
 
 ## POST to <http://localhost:8090/admin/acceptRequest>
 
@@ -174,7 +176,7 @@
 
 - ``` curl -X POST <http://localhost:8090/admin/acceptRequest> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d {"uName":"name of user in registeration request","uPwd":"his pwd", "uRole":"role he selected","std":int here as above,"section": "string as above",subId:"send this is role is teacher and is assigned subject else not needed" } ```
 
 ## DELETE to <http://localhost:8090/admin/rejectRequest>
@@ -185,7 +187,7 @@
 
 - ``` curl -X DELETE <http://localhost:8090/admin/rejectRequest> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d {"uName":"name of user in registeration request","uPwd":"his pwd", "uRole":"role he selected"} ```
 
 ## DELETE to <http://localhost:8090/admin/delTeacher>
@@ -194,5 +196,5 @@
 - JSON TAGS - (teacherId)
 -``` curl -X DELETE <http://localhost:8090/admin/delTeacher> \
      -H "Content-Type: application/json" \
-     -b "userCookie=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVaWQiOiIxIiwiUm9sZSI6InN0dWRlbnQiLCJleHAiOjE3NjAxNjAwNDksImlhdCI6MTc2MDA3MzY0OX0.FdGvcgplMdV18z1_xHYWDJDvjLVBcSM_SxuoXASXvJ0" \
+     -b "userCookie=string.string.string" \
      -d {"teacherId":"string of tId"} ```
