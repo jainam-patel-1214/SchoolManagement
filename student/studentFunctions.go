@@ -7,10 +7,11 @@ import (
 	"net/http"
 	"strconv"
 
+	"example.com/main/database"
 	"github.com/gin-gonic/gin"
 )
 
-const dsn = "root:admin123@tcp(127.0.0.1:3306)/goLearn"
+var dsn = database.InitDb()
 
 type TeacherInfo struct {
 	ID      int    `json:"id" binding:"required"`

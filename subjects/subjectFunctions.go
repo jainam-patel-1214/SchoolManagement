@@ -7,10 +7,11 @@ import (
 	"io"
 	"net/http"
 
+	"example.com/main/database"
 	_ "github.com/go-sql-driver/mysql"
 )
 
-const dsn = "root:admin123@tcp(127.0.0.1:3306)/goLearn"
+var dsn = database.InitDb()
 
 type SubInfo struct {
 	SubId   int    `json:"SubId" binging:"required"`

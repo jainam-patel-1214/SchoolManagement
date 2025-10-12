@@ -6,11 +6,12 @@ import (
 	"net/http"
 	"strconv"
 
+	"example.com/main/database"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 )
 
-const dsn = "root:admin123@tcp(127.0.0.1:3306)/goLearn"
+var dsn = database.InitDb()
 
 type TeacherSubAllocation struct {
 	Tid     int

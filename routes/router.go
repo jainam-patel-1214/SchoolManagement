@@ -10,6 +10,7 @@ import (
 
 func InitializeRouter() *gin.Engine {
 	r := gin.Default()
+
 	// CreateSession is not actually a middleware but validate session is
 	r.POST("/login", middleware.CreateSession)
 	r.POST("/register", admin.CreatePendingReq)

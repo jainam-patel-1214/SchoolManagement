@@ -221,11 +221,12 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
+
+	// "encoding/json"
 	"fmt"
-	"io"
+	// "io"
 	"log"
-	"net/http"
+	// "net/http"
 
 	"example.com/main/migration"
 	"example.com/main/routes"
@@ -235,92 +236,93 @@ import (
 
 const dsn = "root:admin123@tcp(127.0.0.1:3306)/goLearn?multiStatements=true"
 
-type ReturnMsg struct {
-	Code    int    `json:"statusCode" binding:"required"`
-	Status  string `json:"status" binding:"required"`
-	Message string `json:"response"`
-}
+// type ReturnMsg struct {
+// 	Code    int    `json:"statusCode" binding:"required"`
+// 	Status  string `json:"status" binding:"required"`
+// 	Message string `json:"response"`
+// }
 
-type StudentInfo struct {
-	RollNo  int    `json:"rollNo" binding:"required"`
-	Name    string `json:"name" binding:"required"`
-	Section string `json:"section" binding:"required"`
-}
+// type StudentInfo struct {
+// 	RollNo  int    `json:"rollNo" binding:"required"`
+// 	Name    string `json:"name" binding:"required"`
+// 	Section string `json:"section" binding:"required"`
+// }
 
-func sendJSONResponse(writer http.ResponseWriter, code int, status, message string) {
-	writer.WriteHeader(code)
-	response := ReturnMsg{Code: code, Status: status, Message: message}
-	b, err := json.Marshal(response)
-	if err != nil {
-		fmt.Println("JSON Marshal error:", err)
-		return
-	}
-	writer.Write(b)
-}
+// func sendJSONResponse(writer http.ResponseWriter, code int, status, message string) {
+// 	writer.WriteHeader(code)
+// 	response := ReturnMsg{Code: code, Status: status, Message: message}
+// 	b, err := json.Marshal(response)
+// 	if err != nil {
+// 		fmt.Println("JSON Marshal error:", err)
+// 		return
+// 	}
+// 	writer.Write(b)
+// }
 
-func handleSubmitStudent(writer http.ResponseWriter, reader *http.Request) {
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		log.Fatal("Error opening DB: ", err)
-	}
-	defer db.Close()
-	res, err := db.Query("SELECT * FROM information_schema.tables WHERE table_schema='goLearn' AND table_name='students'")
-	if err != nil {
-		fmt.Println("database not defined")
-		sendJSONResponse(writer, 500, "Internal Server Error", "CANNOT FIND DATABASE")
-		return
-	}
-	if !res.Next() {
-		_, err = db.Exec("CREATE TABLE students (RollNo int NOT NULL UNIQUE, Name varchar(255), Section varchar(4), PRIMARY KEY(RollNo))")
-		if err != nil {
-			fmt.Println("ISSUE WHILE CREATING TABLE")
-			sendJSONResponse(writer, 500, "Internal Server Error", "ERROR CREATING TABLE")
-			return
-		}
-		fmt.Println("table created")
-	}
-	defer res.Close()
+// func handleSubmitStudent(writer http.ResponseWriter, reader *http.Request) {
+// 	db, err := sql.Open("mysql", dsn)
+// 	if err != nil {
+// 		log.Fatal("Error opening DB: ", err)
+// 	}
+// 	defer db.Close()
+// 	res, err := db.Query("SELECT * FROM information_schema.tables WHERE table_schema='goLearn' AND table_name='students'")
+// 	if err != nil {
+// 		fmt.Println("database not defined")
+// 		sendJSONResponse(writer, 500, "Internal Server Error", "CANNOT FIND DATABASE")
+// 		return
+// 	}
+// 	if !res.Next() {
+// 		_, err = db.Exec("CREATE TABLE students (RollNo int NOT NULL UNIQUE, Name varchar(255), Section varchar(4), PRIMARY KEY(RollNo))")
+// 		if err != nil {
+// 			fmt.Println("ISSUE WHILE CREATING TABLE")
+// 			sendJSONResponse(writer, 500, "Internal Server Error", "ERROR CREATING TABLE")
+// 			return
+// 		}
+// 		fmt.Println("table created")
+// 	}
+// 	defer res.Close()
 
-	body, err := io.ReadAll(reader.Body)
-	if err != nil {
-		fmt.Println(err)
-		var fail = ReturnMsg{Code: 404, Status: "Not found", Message: "BODY UNREADABLE"}
-		b, err1 := json.Marshal(fail)
-		if err1 != nil {
-			fmt.Println(err1)
-		}
-		writer.Write(b)
-		return
-	}
-	var data StudentInfo
-	if err = json.Unmarshal(body, &data); err != nil {
-		fmt.Println(err)
-		var fail = ReturnMsg{Code: 404, Status: "Not found", Message: "REQUIRED FIELDS EMPTY"}
-		b, err1 := json.Marshal(fail)
-		if err1 != nil {
-			fmt.Println(err1)
-		}
-		writer.Write(b)
-		return
-	}
-	transisiton, err := db.Begin()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	_, err = db.Exec(`INSERT INTO students (RollNo, Name, Section, ScienceMark, EnglishMark, ClassID) VALUES (?,?,?)`, data.RollNo, data.Name, data.Section)
-	if err != nil {
-		fmt.Println(err)
-		transisiton.Rollback()
-	}
-	err = transisiton.Commit()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("commited and saved successfully")
-}
+// 	body, err := io.ReadAll(reader.Body)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		var fail = ReturnMsg{Code: 404, Status: "Not found", Message: "BODY UNREADABLE"}
+// 		b, err1 := json.Marshal(fail)
+// 		if err1 != nil {
+// 			fmt.Println(err1)
+// 		}
+// 		writer.Write(b)
+// 		return
+// 	}
+// 	var data StudentInfo
+// 	if err = json.Unmarshal(body, &data); err != nil {
+// 		fmt.Println(err)
+// 		var fail = ReturnMsg{Code: 404, Status: "Not found", Message: "REQUIRED FIELDS EMPTY"}
+// 		b, err1 := json.Marshal(fail)
+// 		if err1 != nil {
+// 			fmt.Println(err1)
+// 		}
+// 		writer.Write(b)
+// 		return
+// 	}
+// 	transisiton, err := db.Begin()
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		return
+// 	}
+// 	_, err = db.Exec(`INSERT INTO students (RollNo, Name, Section, ScienceMark, EnglishMark, ClassID) VALUES (?,?,?)`, data.RollNo, data.Name, data.Section)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		transisiton.Rollback()
+// 	}
+// 	err = transisiton.Commit()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	fmt.Println("commited and saved successfully")
+// }
 
 func main() {
+
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatal("Error opening DB: ", err)

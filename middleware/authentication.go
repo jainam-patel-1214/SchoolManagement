@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"example.com/main/database"
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/gin-gonic/gin"
@@ -30,7 +31,7 @@ type JwtClaims struct {
 
 var SessionInfo Backup
 
-const dsn = "root:admin123@tcp(127.0.0.1:3306)/goLearn?multiStatements=true"
+var dsn = database.InitDb()
 
 func CreateSession(ctx *gin.Context) {
 	// return func(ctx *gin.Context) {
