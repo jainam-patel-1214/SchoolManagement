@@ -70,7 +70,8 @@ func CreatePendingReq(ctx *gin.Context) {
 			}
 		case "admin":
 			id := RandomString(10)
-			_, err = db.Exec("INSERT INTO admin (admin_id,admin_name,admin_pwd) VALUES (?,?,?)", id, PendingDb.Username, PendingDb.Pwd)
+			fmt.Println(id, PendingDb.Username, PendingDb.Pwd)
+			_, err = db.Exec("INSERT INTO admins (admin_id,admin_name,admin_pwd) VALUES (?,?,?)", id, PendingDb.Username, PendingDb.Pwd)
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error creating id"})
 				return
