@@ -7,7 +7,7 @@
 # register api
 
 - api -> post to <http://localhost:8090/register> body - user, pwd and role you want  
-- JSON TAGS REQUIRED - (roleReq,userName,pwd)
+- JSON TAGS REQUIRED - (roleReq,userName,password)
 
 ```
 - curl -X POST <http://localhost:8090/register> \

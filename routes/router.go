@@ -48,6 +48,20 @@ func InitializeRouter() *gin.Engine {
 			admn.POST("/acceptRequest", admin.AcceptPendingReq)
 			admn.POST("/rejectRequest", admin.RejectRequest)
 			admn.DELETE("/delTeacher", admin.DeleteTeacher)
+
+			admn.GET("/display", admin.DisplayStudents)
+			admn.GET("/displaySub", admin.DisplaySubject)
+			admn.GET("/report", admin.Report)
+
+			admn.GET("/displayPerformance", admin.Performance)
+			admn.POST("/createStud", admin.AddStudent)
+			admn.PUT("/updateStud", admin.EditStud)
+			admn.POST("/createSub", admin.CreateSub)
+			admn.PUT("/updateSub", admin.EditSub)
+			admn.POST("/enterMarks", admin.EnterMarks)
+			admn.PUT("/updateMarks", admin.EditMarks)
+			admn.DELETE("/delStudent", admin.DelStud)
+			admn.DELETE("/delSubject", admin.DelSub)
 		}
 	}
 	return r

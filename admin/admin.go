@@ -31,7 +31,7 @@ func CreatePendingReq(ctx *gin.Context) {
 	var PendingDb struct {
 		RoleRequested string `json:"roleReq" binding:"required"`
 		Username      string `json:"userName" binding:"required"`
-		Pwd           string `json:"pwd" binding:"required"`
+		Pwd           string `json:"password" binding:"required"`
 		SecretKey     string `json:"secretK"`
 	}
 	db, err := sql.Open("mysql", dsn)

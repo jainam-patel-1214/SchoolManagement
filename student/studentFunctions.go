@@ -216,7 +216,7 @@ func Report(ctx *gin.Context) {
 			log.Fatal(err)
 			return
 		}
-		res1, err := db.Query("SELECT m.subId s.subName m.theoryM m.practicalM m.grade FROM marks m INNER JOIN subjects s ON s.subId == m.subId WHERE m.grNo = ?", temp)
+		res1, err := db.Query("SELECT m.subId,s.subName,m.theoryM,m.practicalM,m.grade FROM marks m INNER JOIN subjects s ON s.subId = m.subId WHERE m.grNo = ?", temp)
 		if err != nil {
 			tc.Rollback()
 			log.Fatal(err)
@@ -227,11 +227,13 @@ func Report(ctx *gin.Context) {
 			tc.Rollback()
 			log.Fatal("Failed to create savepoint:", err)
 		}
-		res2, err := db.Query("SELECT r.tId t.tName r.comment FROM reviews r INNER JOIN teachers t ON t.tId == r.tId WHERE m.grNo = ?", temp)
+		res2, err := db.Query("SELECT r.tId,t.tName,r.comment FROM reviews r INNER JOIN teachers t ON t.tId = r.tId WHERE r.grNo = ?", temp)
 		if err != nil {
 			_, err = tc.Exec("ROLLBACK TO SAVEPOINT query1done")
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error processing query"})
-			return
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error processing query"})
+				return
+			}
 		}
 		if err = tc.Commit(); err != nil {
 			log.Fatal("Failed to commit transaction:", err)
