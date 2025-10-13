@@ -50,7 +50,7 @@ func CreatePendingReq(ctx *gin.Context) {
 		switch PendingDb.RoleRequested {
 		case "student":
 			id := Random8DigitInt()
-			_, err = db.Exec("INSERT INTO students (grNo,sPwd,userRole,studName,std,section) VALUES (?,?,?,?,?,?)", "0000", PendingDb.Pwd, PendingDb.RoleRequested, PendingDb.Username, 10, "X")
+			_, err = db.Exec("INSERT INTO students (grNo,sPwd,userRole,studName,std,section) VALUES (?,?,?,?,?,?)", id, PendingDb.Pwd, PendingDb.RoleRequested, PendingDb.Username, 10, "X")
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error creating id"})
 				return
