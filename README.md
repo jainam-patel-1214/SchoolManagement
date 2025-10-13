@@ -2,6 +2,8 @@
 
 ## ALL THE PASSWORDS FOR NOW ARE REQUIRED TO BE 8 CHARACTERS IRRESPECTIVE OF ROLES
 
+### after cloning and pulling authentication branch, create .env file and add you dsn like DSN="whatever the link is?multiStatements=true". Dont forget to add "?multiStatements=true" this at end of dsn else during migration it would fire error
+
 # register api
 
 - api -> post to <http://localhost:8090/register> body - user, pwd and role you want  

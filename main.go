@@ -228,13 +228,14 @@ import (
 	"log"
 	// "net/http"
 
+	"example.com/main/database"
 	"example.com/main/migration"
 	"example.com/main/routes"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
-const dsn = "root:admin123@tcp(127.0.0.1:3306)/goLearn?multiStatements=true"
+var dsn = database.InitDb()
 
 // type ReturnMsg struct {
 // 	Code    int    `json:"statusCode" binding:"required"`
