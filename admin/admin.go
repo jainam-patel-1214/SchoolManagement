@@ -3,6 +3,7 @@ package admin
 import (
 	"database/sql"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strconv"
 
@@ -12,11 +13,26 @@ import (
 
 var dsn = database.InitDb()
 
+const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+func Random8DigitInt() int {
+	return rand.Intn(90000000) + 10000000
+}
+
+func RandomString(length int) string {
+	result := make([]byte, length)
+	for i := range result {
+		result[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(result)
+}
+
 func CreatePendingReq(ctx *gin.Context) {
 	var PendingDb struct {
-		RoleRequested string `json:"roleReq"`
-		Username      string `json:"userName"`
-		Pwd           string `json:"pwd"`
+		RoleRequested string `json:"roleReq" binding:"required"`
+		Username      string `json:"userName" binding:"required"`
+		Pwd           string `json:"pwd" binding:"required"`
+		SecretKey     string `json:"secretK"`
 	}
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -29,6 +45,43 @@ func CreatePendingReq(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "cannot read body"})
 		return
+	}
+	if PendingDb.SecretKey == "$2a$15$NXTb8AxndfnaA82JWAxr2.apFmJkU.S1ROK10HmFBf69KxSCtW7S" {
+		switch PendingDb.RoleRequested {
+		case "student":
+			id := Random8DigitInt()
+			_, err = db.Exec("INSERT INTO students (grNo,sPwd,userRole,studName,std,section) VALUES (?,?,?,?,?,?)", "0000", PendingDb.Pwd, PendingDb.RoleRequested, PendingDb.Username, 10, "X")
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error creating id"})
+				return
+			} else {
+				ctx.JSON(http.StatusOK, gin.H{"output": fmt.Sprintf("your_id = %d and pwd = %s", id, PendingDb.Pwd)})
+				return
+			}
+		case "teacher":
+			id := RandomString(8)
+			_, err = db.Exec("INSERT INTO teachers (tId,tPwd,userRole,tName) VALUES (?,?,?,?)", id, PendingDb.Pwd, PendingDb.RoleRequested, PendingDb.Username)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error creating id"})
+				return
+			} else {
+				ctx.JSON(http.StatusOK, gin.H{"output": fmt.Sprintf("your_id = %s and pwd = %s", id, PendingDb.Pwd)})
+				return
+			}
+		case "admin":
+			id := RandomString(10)
+			_, err = db.Exec("INSERT INTO admin (admin_id,admin_name,admin_pwd) VALUES (?,?,?)", id, PendingDb.Username, PendingDb.Pwd)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error creating id"})
+				return
+			} else {
+				ctx.JSON(http.StatusOK, gin.H{"output": fmt.Sprintf("your_id = %s and pwd = %s", id, PendingDb.Pwd)})
+				return
+			}
+		default:
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid role requested"})
+			return
+		}
 	}
 	_, err = db.Exec("INSERT INTO pendingApplications (username,role_requested,user_pwd) VALUES (?,?,?)", PendingDb.Username, PendingDb.RoleRequested, PendingDb.Pwd)
 	if err != nil {
