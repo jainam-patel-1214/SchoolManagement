@@ -70,6 +70,17 @@
 
 # TEACHERS API
 
+## GET to <http://localhost:8090/teacher/studentreport>
+
+- it allows any teacher to look any student's performance
+
+```
+- curl -X GET <http://localhost:8090/teacher/studentreport> \
+     -H "Content-Type: application/json" \
+     -b "userCookie=string.string.string" \ 
+     -d {"grNo":student gr no int here}
+```
+
 ## GET to <http://localhost:8090/teacher/displayPerformance>
 
 - it displays performance of teacher logged in + performance of other teachers who are in same std assigned as logged in teacher eg- all teachers of standard x are displayed with total marks of students

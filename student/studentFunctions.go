@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"unicode"
 
 	"example.com/main/database"
 	"github.com/gin-gonic/gin"
@@ -42,6 +43,15 @@ type DisplayConditions struct {
 	MaxPercent    int    `json:"maxPercent"`
 }
 
+func HasOnlyAlphabets(s string) bool {
+	for _, r := range s {
+		if !unicode.IsLetter(r) {
+			return false
+		}
+	}
+	return true
+}
+
 func DisplayStudents(ctx *gin.Context) {
 	role, exist := ctx.Get("userrole")
 	if !exist || role != "student" {
@@ -55,7 +65,22 @@ func DisplayStudents(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
 			return
 		}
-		fmt.Println("555,", constraints)
+		if constraints.MaxPercent > 100 || constraints.MaxPercent < 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "max percent shall be within range of 0 and 100"})
+			return
+		}
+		if constraints.MinPercent > 100 || constraints.MinPercent < 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "min percent shall be within range of 0 and 100"})
+			return
+		}
+		if constraints.ViewByStd > 12 || constraints.ViewByStd <= 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standards from 1 to 12 are available"})
+			return
+		}
+		if len(constraints.ViewBySection) > 2 || !HasOnlyAlphabets(constraints.ViewBySection) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid section"})
+			return
+		}
 		dbstr := "SELECT s.studName, s.std, s.section, sub.subName, m.theoryM, m.practicalM, m.grade FROM students s RIGHT JOIN marks m ON s.grNo = m.grNo INNER JOIN subjects sub ON m.subId = sub.subId"
 		count := 0
 		if constraints.ViewByStd != 0 {
@@ -122,6 +147,10 @@ func DisplayStudents(ctx *gin.Context) {
 			}
 			queryres = append(queryres, record)
 		}
+		if len(queryres) == 0 {
+			ctx.JSON(http.StatusOK, gin.H{"output": "no result found"})
+			return
+		}
 		ctx.JSON(http.StatusOK, gin.H{"result": queryres})
 		return
 	} else {
@@ -143,6 +172,14 @@ func DisplaySubject(ctx *gin.Context) {
 		}
 		if err := ctx.BindJSON(&constraints); err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
+			return
+		}
+		if constraints.Std == 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "please enter valid input"})
+			return
+		}
+		if constraints.Std > 12 || constraints.Std < 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standards ranging from 1 to 12 are available"})
 			return
 		}
 		dbstr := "SELECT * FROM subjects WHERE levelStd = " + strconv.Itoa(constraints.Std)
@@ -172,6 +209,14 @@ func DisplaySubject(ctx *gin.Context) {
 				return
 			}
 			queryres = append(queryres, record)
+		}
+		if len(queryres) == 0 {
+			ctx.JSON(http.StatusOK, gin.H{"result": "no subjects found"})
+			return
+		}
+		if len(queryres) == 0 {
+			ctx.JSON(http.StatusOK, gin.H{"output": "no result found"})
+			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"result": queryres})
 		return
@@ -259,6 +304,10 @@ func Report(ctx *gin.Context) {
 				return
 			}
 			otpt.CommentInfo = append(otpt.CommentInfo, tp)
+		}
+		if len(otpt.CommentInfo) == 0 && len(otpt.MarkInfo) == 0 {
+			ctx.JSON(http.StatusOK, gin.H{"output": "no result found"})
+			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"output": otpt})
 	}

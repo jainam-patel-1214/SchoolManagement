@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,6 +16,16 @@ type DisplayConditions struct {
 	ViewBySection string `json:"viewBySection"`
 	MinPercent    int    `json:"minPercent"`
 	MaxPercent    int    `json:"maxPercent"`
+}
+
+func HasOnlyAlphabets(s string) bool {
+	for i, r := range s {
+		if !unicode.IsLetter(r) {
+			fmt.Println(i)
+			return false
+		}
+	}
+	return true
 }
 
 func DisplayStudents(ctx *gin.Context) {
@@ -27,10 +38,29 @@ func DisplayStudents(ctx *gin.Context) {
 	if role == "admin" {
 		var constraints DisplayConditions
 		if err := ctx.BindJSON(&constraints); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid body received"})
 			return
 		}
-		fmt.Println("555,", constraints)
+		if constraints.MaxPercent > 100 || constraints.MaxPercent < 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "max percent shall be within range of 0 and 100"})
+			return
+		}
+		if constraints.MinPercent >= constraints.MaxPercent {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid mix and max percent combination, min shall be less"})
+			return
+		}
+		if constraints.MinPercent > 100 || constraints.MinPercent < 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "min percent shall be within range of 0 and 100"})
+			return
+		}
+		if constraints.ViewByStd > 12 || constraints.ViewByStd < 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standards ranging from 1 to 12 are available"})
+			return
+		}
+		if len(constraints.ViewBySection) > 2 || !HasOnlyAlphabets(constraints.ViewBySection) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "section only has 2 characters"})
+			return
+		}
 		dbstr := "SELECT s.studName, s.std, s.section, sub.subName, m.theoryM, m.practicalM, m.grade FROM students s RIGHT JOIN marks m ON s.grNo = m.grNo INNER JOIN subjects sub ON m.subId = sub.subId"
 		count := 0
 		if constraints.ViewByStd != 0 {
@@ -97,6 +127,10 @@ func DisplayStudents(ctx *gin.Context) {
 			}
 			queryres = append(queryres, record)
 		}
+		if len(queryres) == 0 {
+			ctx.JSON(http.StatusOK, gin.H{"result": "no results found"})
+			return
+		}
 		ctx.JSON(http.StatusOK, gin.H{"result": queryres})
 		return
 	} else {
@@ -116,7 +150,11 @@ func DisplaySubject(ctx *gin.Context) {
 			Std int `json:"std" binding:"required"`
 		}
 		if err := ctx.BindJSON(&constraints); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid body received"})
+			return
+		}
+		if constraints.Std > 12 || constraints.Std < 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standards ranging from 1 to 12 are available"})
 			return
 		}
 		dbstr := "SELECT * FROM subjects WHERE levelStd = " + strconv.Itoa(constraints.Std)
@@ -147,6 +185,10 @@ func DisplaySubject(ctx *gin.Context) {
 			}
 			queryres = append(queryres, record)
 		}
+		if len(queryres) == 0 {
+			ctx.JSON(http.StatusOK, gin.H{"result": "no subjects found"})
+			return
+		}
 		ctx.JSON(http.StatusOK, gin.H{"result": queryres})
 		return
 	} else {
@@ -156,7 +198,7 @@ func DisplaySubject(ctx *gin.Context) {
 
 func Report(ctx *gin.Context) {
 	role, exist := ctx.Get("userrole")
-	if !exist || role != "admin" {
+	if !exist || (role != "admin" && role != "teacher") {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
 		return
 	} else {
@@ -183,7 +225,11 @@ func Report(ctx *gin.Context) {
 		}
 		err = ctx.BindJSON(&Param)
 		if err != nil {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "id not found"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if Param.StudentGrNo == 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid id provided"})
 			return
 		}
 		temp := fmt.Sprintf("%v", Param.StudentGrNo)
@@ -239,8 +285,12 @@ func Report(ctx *gin.Context) {
 			}
 			otpt.CommentInfo = append(otpt.CommentInfo, tp)
 		}
-
+		if len(otpt.CommentInfo) == 0 && len(otpt.MarkInfo) == 0 {
+			ctx.JSON(http.StatusOK, gin.H{"result": "no result found"})
+			return
+		}
 		ctx.JSON(http.StatusOK, gin.H{"output": otpt})
+		return
 	}
 }
 
@@ -267,6 +317,50 @@ func AddStudent(ctx *gin.Context) {
 		err = ctx.Bind(&studentData)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "cannot read body"})
+			return
+		}
+		if studentData.GR_NO == 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid gr no provided"})
+			return
+		}
+		if studentData.GR_NO > 99999999 || studentData.GR_NO < 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid gr no provided"})
+			return
+		}
+		if len(studentData.StudentPwd) != 8 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "password length required of 8 characters"})
+			return
+		}
+		if studentData.StudentPwd == "" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "please provide password"})
+			return
+		}
+		if studentData.UserRole != "student" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "student user role required"})
+			return
+		}
+		if studentData.StudentName == "" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "please provide name of student"})
+			return
+		}
+		if !HasOnlyAlphabets(studentData.StudentName) && studentData.StudentName != "" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "symbols/digits not allowed in student name"})
+			return
+		}
+		if studentData.Std == 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "standard not provided, it shall be from 1 to 12"})
+			return
+		}
+		if studentData.Section == "" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "section not provided"})
+			return
+		}
+		if studentData.Std < 0 || studentData.Std > 12 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "standard shall be from 1 to 12"})
+			return
+		}
+		if len(studentData.Section) < 1 || len(studentData.Section) > 2 || !HasOnlyAlphabets(studentData.Section) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid section"})
 			return
 		}
 		_, err = db.Exec("INSERT INTO students (grNo, sPwd, userRole, studName, std, section) VALUES (?,?,?,?,?,?)", studentData.GR_NO, studentData.StudentPwd, studentData.UserRole, studentData.StudentName, studentData.Std, studentData.Section)
@@ -301,9 +395,41 @@ func EditStud(ctx *gin.Context) {
 		var editBody EditBody
 		err = ctx.Bind(&editBody)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "error while reading body"})
 			return
 		}
+
+		if editBody.GR_No == 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid gr no provided"})
+			return
+		}
+		if editBody.GR_No > 99999999 || editBody.GR_No < 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid gr no provided"})
+			return
+		}
+		if len(editBody.StudentPwd) != 8 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "password length required of 8 characters"})
+			return
+		}
+		if editBody.UserRole != "" && editBody.UserRole != "student" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "student user role required"})
+			return
+		}
+		if editBody.StudentName != "" && HasOnlyAlphabets(editBody.StudentName) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "please accurate name of student"})
+			return
+		}
+		if editBody.Std != 0 {
+			if editBody.Std < 1 && editBody.Std > 12 {
+				ctx.JSON(http.StatusBadRequest, gin.H{"error": "standard shall be from 1 to 12"})
+				return
+			}
+		}
+		if editBody.Section != "" && (len(editBody.Section) < 1 || len(editBody.Section) > 2) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "accurate section not provided"})
+			return
+		}
+
 		var defaultData EditBody
 		err = db.QueryRow("SELECT * FROM students WHERE grNo=?", editBody.GR_No).Scan(&defaultData.GR_No, &defaultData.StudentPwd, &defaultData.UserRole, &defaultData.StudentName, &defaultData.Std, &defaultData.Section)
 		if err != nil {
@@ -362,9 +488,27 @@ func CreateSub(ctx *gin.Context) {
 			Credits  int    `json:"credits" binding:"required"`
 		}
 		if err = ctx.Bind(&subInfo); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error processing data"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "error processing body"})
 			return
 		}
+
+		if subInfo.SubId <= 0 || subInfo.SubId > 99999999 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject id, pls enter max 8 digit id"})
+			return
+		}
+		if subInfo.SubName == "" || len(subInfo.SubName) > 50 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject name, pls provide name upto 50 chars"})
+			return
+		}
+		if subInfo.LevelStd <= 0 || subInfo.LevelStd > 12 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standard from 1 to 12 are valid"})
+			return
+		}
+		if subInfo.Credits < 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "negative credits are not possible"})
+			return
+		}
+
 		var limit int
 		err = db.QueryRow("SELECT subject_limit FROM subjectAllocation WHERE std = ?", subInfo.LevelStd).Scan(&limit)
 		if err != nil {
@@ -415,9 +559,31 @@ func EditSub(ctx *gin.Context) {
 		var editBody EditBody
 		err = ctx.Bind(&editBody)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "error while readingbody"})
 			return
 		}
+
+		if editBody.SubId <= 0 || editBody.SubId > 99999999 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject id, pls enter max 8 digit id"})
+			return
+		}
+		if editBody.SubName != "" || len(editBody.SubName) > 50 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject name, pls provide name upto 50 chars"})
+			return
+		}
+		if editBody.LevelStd != 0 {
+			if editBody.LevelStd < 0 || editBody.LevelStd > 12 {
+				ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standard from 1 to 12 are valid"})
+				return
+			}
+		}
+		if editBody.Credits != 0 {
+			if editBody.Credits < 0 {
+				ctx.JSON(http.StatusBadRequest, gin.H{"error": "negative credits are not possible"})
+				return
+			}
+		}
+
 		var defaultData EditBody
 		err = db.QueryRow("SELECT * FROM subjects WHERE subId=?", editBody.SubId).Scan(&defaultData.SubId, &defaultData.SubName, &defaultData.LevelStd, &defaultData.Credits)
 		if err != nil {
@@ -427,7 +593,7 @@ func EditSub(ctx *gin.Context) {
 		dbstr := "UPDATE subjects SET "
 		var conditions []string
 		if editBody.SubId != defaultData.SubId && editBody.SubId != 0 {
-			conditions = append(conditions, ("subId = '" + strconv.Itoa(editBody.SubId) + "'"))
+			conditions = append(conditions, ("subId = " + strconv.Itoa(editBody.SubId)))
 		}
 		if editBody.SubName != defaultData.SubName && editBody.SubName != "" {
 			conditions = append(conditions, ("subName = '" + editBody.SubName + "'"))
@@ -436,7 +602,7 @@ func EditSub(ctx *gin.Context) {
 			conditions = append(conditions, ("levelStd = " + strconv.Itoa(editBody.LevelStd)))
 		}
 		if editBody.Credits != defaultData.Credits && editBody.Credits != 0 {
-			conditions = append(conditions, ("credits = '" + strconv.Itoa(editBody.Credits) + "'"))
+			conditions = append(conditions, ("credits = " + strconv.Itoa(editBody.Credits)))
 		}
 		for i, v := range conditions {
 			dbstr += v
@@ -480,13 +646,50 @@ func EnterMarks(ctx *gin.Context) {
 			PracticalMarks int `json:"practicalMarks" binding:"required"`
 		}
 		if err = ctx.Bind(&marks); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		if marks.GrNo <= 0 || marks.GrNo > 99999999 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid gr no., pls enter max 8 digit id"})
+			return
+		}
+		if marks.SubId <= 0 || marks.SubId > 99999999 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject id"})
+			return
+		}
+		if marks.TheoryMarks < 0 || marks.TheoryMarks > 80 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide theory marks between 0 & 80"})
+			return
+		}
+		if marks.PracticalMarks < 0 || marks.PracticalMarks > 20 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide practical marks between 0 & 20"})
+			return
+		}
+		var amountstud int
+		err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo = ?", marks.GrNo).Scan(&amountstud)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if amountstud <= 0 {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "student not exist whom you want to add marks"})
+			return
+		}
+		var amountsub int
+		err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId = ?", marks.SubId).Scan(&amountsub)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if amountsub <= 0 {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject not exist whom you want to add marks"})
 			return
 		}
 		var amount int
 		err = db.QueryRow("SELECT COUNT(grNo) FROM marks WHERE grNo = ? AND subId = ?", marks.GrNo, marks.SubId).Scan(&amount)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		if amount > 0 {
@@ -529,13 +732,64 @@ func EditMarks(ctx *gin.Context) {
 		var tempgrade string
 		err = ctx.Bind(&editBody)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		if editBody.GrNo <= 0 || editBody.GrNo > 99999999 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid gr no., pls enter max 8 digit id"})
+			return
+		}
+		if editBody.SubId <= 0 || editBody.SubId > 99999999 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject id"})
+			return
+		}
+		if editBody.TheoryMarks != 0 {
+			if editBody.TheoryMarks < 0 || editBody.TheoryMarks > 80 {
+				ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide theory marks between 0 & 80"})
+				return
+			}
+		}
+		if editBody.PracticalMarks != 0 {
+			if editBody.PracticalMarks < 0 || editBody.PracticalMarks > 20 {
+				ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide practical marks between 0 & 20"})
+				return
+			}
+		}
+		var amountstud int
+		err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo = ?", editBody.GrNo).Scan(&amountstud)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if amountstud <= 0 {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "student not exist whom you want to add marks"})
+			return
+		}
+		var amountsub int
+		err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId = ?", editBody.SubId).Scan(&amountsub)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if amountsub <= 0 {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject not exist whom you want to add marks"})
+			return
+		}
+		var amount int
+		err = db.QueryRow("SELECT COUNT(grNo) FROM marks WHERE grNo = ? AND subId = ?", editBody.GrNo, editBody.SubId).Scan(&amount)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if amount <= 0 {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "record already present please try updating it"})
 			return
 		}
 		var defaultData marks
-		err = db.QueryRow("SELECT * FROM marks WHERE grNo=?", editBody.GrNo).Scan(&defaultData.GrNo, &defaultData.SubId, &defaultData.TheoryMarks, &defaultData.PracticalMarks, &tempgrade)
+		err = db.QueryRow("SELECT * FROM marks WHERE grNo=? AND subId=?", editBody.GrNo, editBody.SubId).Scan(&defaultData.GrNo, &defaultData.SubId, &defaultData.TheoryMarks, &defaultData.PracticalMarks, &tempgrade)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "such grno and subject id entry not found"})
 			return
 		}
 		dbstr := "UPDATE marks SET "
@@ -601,10 +855,28 @@ func Performance(ctx *gin.Context) {
 	}
 	err = ctx.BindJSON(&TeacherId)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "teacher id not found"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "teacher id not found"})
 		return
 	}
-	res := db.QueryRow("SELECT stdAllocated FROM teachers WHERE tId = ?", TeacherId.Tid)
+	if TeacherId.Tid != "" {
+		if len(TeacherId.Tid) > 8 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid teacher's id"})
+			return
+		}
+		var amt int
+		if err = db.QueryRow(fmt.Sprintf("SELECT COUNT(tId) FROM teachers WHERE tId = '%s'", TeacherId.Tid)).Scan(&amt); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if amt <= 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "no such teacher found with entered teacher id"})
+			return
+		}
+	} else {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "please provide teacher's id"})
+		return
+	}
+	res := db.QueryRow(fmt.Sprintf("SELECT stdAllocated FROM teachers WHERE tId = '%s'", TeacherId.Tid))
 	var std int
 	if err = res.Scan(&std); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
@@ -631,9 +903,9 @@ func Performance(ctx *gin.Context) {
 		if err != nil {
 			fmt.Println("cannot scan", err)
 		} else {
-			res3, err := db.Query("SELECT t.tId, t.tName, t.stdAllocated, s.subName, SUM(m.theoryM) AS totalTheory, SUM(m.practicalM) AS totalPractical FROM marks m LEFT JOIN teachers t ON m.subId = t.subId INNER JOIN subjects s ON t.subId = s.subId WHERE t.tId = ? GROUP BY t.tId, t.tName, t.stdAllocated, s.subName", temp)
+			res3, err := db.Query(fmt.Sprintf("SELECT t.tId, t.tName, t.stdAllocated, s.subName, SUM(m.theoryM) AS totalTheory, SUM(m.practicalM) AS totalPractical FROM marks m LEFT JOIN teachers t ON m.subId = t.subId INNER JOIN subjects s ON t.subId = s.subId WHERE t.tId = '%s' GROUP BY t.tId, t.tName, t.stdAllocated, s.subName", temp))
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
 			if res3.Next() {
@@ -646,7 +918,11 @@ func Performance(ctx *gin.Context) {
 			}
 		}
 	}
-	fmt.Println(result)
+	// fmt.Println(result)
+	if len(result) == 0 {
+		ctx.JSON(http.StatusOK, gin.H{"result": "no results found"})
+		return
+	}
 	ctx.JSON(http.StatusOK, gin.H{"output": result})
 }
 
@@ -662,14 +938,28 @@ func DelStud(ctx *gin.Context) {
 			GRno int `json:"grNo" binding:"required"`
 		}
 		if err := ctx.Bind(&stdGrno); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unable to read body"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "unable to read body"})
 			return
 		}
-
+		if stdGrno.GRno <= 0 || stdGrno.GRno > 99999999 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid student id entered for deletion"})
+			return
+		}
 		db, err := sql.Open("mysql", dsn)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
 			return
+		}
+		if stdGrno.GRno != 0 {
+			var amt int
+			if err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo=?", stdGrno.GRno).Scan(&amt); err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			if amt <= 0 {
+				ctx.JSON(http.StatusBadRequest, gin.H{"error": "student to be deleted doesnot exist, please enter existing gr no"})
+				return
+			}
 		}
 		defer db.Close()
 		if _, err = db.Exec("DELETE FROM students WHERE grNo = ?", stdGrno.GRno); err != nil {
@@ -695,7 +985,11 @@ func DelSub(ctx *gin.Context) {
 			SubId int `json:"subId" binding:"required"`
 		}
 		if err := ctx.BindJSON(&subid); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unable to read body"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "unable to read body"})
+			return
+		}
+		if subid.SubId <= 0 || subid.SubId > 99999999 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject id, pls enter max 8 digit id"})
 			return
 		}
 		db, err := sql.Open("mysql", dsn)
@@ -703,9 +997,20 @@ func DelSub(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
 			return
 		}
+		if subid.SubId != 0 {
+			var amt int
+			if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", subid.SubId).Scan(&amt); err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			if amt <= 0 {
+				ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject to be deleted doesnot exist, please enter existing subject id"})
+				return
+			}
+		}
 		defer db.Close()
 		if _, err = db.Exec("DELETE FROM subjects WHERE subId = ?", subid.SubId); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"output": "DELETED SUCCESSFULLY"})

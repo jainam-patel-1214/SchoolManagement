@@ -27,6 +27,7 @@ func InitializeRouter() *gin.Engine {
 		teach := r.Group("/teacher")
 		teach.Use(middleware.ValidateSession())
 		{
+			teach.GET("/studentreport", teacher.Report)
 			teach.GET("/displayPerformance", teacher.Performance)
 			teach.POST("/createStud", teacher.AddStudent)
 			teach.PUT("/updateStud", teacher.EditStud)
@@ -51,9 +52,9 @@ func InitializeRouter() *gin.Engine {
 
 			admn.GET("/display", admin.DisplayStudents)
 			admn.GET("/displaySub", admin.DisplaySubject)
-			admn.GET("/report", admin.Report)
+			admn.GET("/studentreport", admin.Report)
 
-			admn.GET("/displayPerformance", admin.Performance)
+			admn.GET("/displayTeacherPerformance", admin.Performance)
 			admn.POST("/createStud", admin.AddStudent)
 			admn.PUT("/updateStud", admin.EditStud)
 			admn.POST("/createSub", admin.CreateSub)
