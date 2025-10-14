@@ -232,6 +232,19 @@ func Report(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid id provided"})
 			return
 		}
+		if Param.StudentGrNo < 0 || Param.StudentGrNo > 99999999 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid id provided"})
+			return
+		}
+		var amount int
+		if err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo=?", Param.StudentGrNo).Scan(&amount); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if amount <= 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "no such student exists"})
+			return
+		}
 		temp := fmt.Sprintf("%v", Param.StudentGrNo)
 		fmt.Println("temp var", temp)
 		tc, err := db.Begin()
@@ -316,7 +329,7 @@ func AddStudent(ctx *gin.Context) {
 		}
 		err = ctx.Bind(&studentData)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "cannot read body"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		if studentData.GR_NO == 0 {
@@ -395,7 +408,7 @@ func EditStud(ctx *gin.Context) {
 		var editBody EditBody
 		err = ctx.Bind(&editBody)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "error while reading body"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -855,7 +868,7 @@ func Performance(ctx *gin.Context) {
 	}
 	err = ctx.BindJSON(&TeacherId)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "teacher id not found"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	if TeacherId.Tid != "" {
