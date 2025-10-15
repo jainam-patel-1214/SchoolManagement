@@ -1,8 +1,8 @@
-## BEFORE RUNNING PROJECT MOVE 002.sql FROM `middleware` into `migration` DIR SO YOU GET TEMPORARY DATA ADDED IN YOUR DATABASE
+## SOME RULES TO BE FOLLOWED
 
-## ALL THE PASSWORDS FOR NOW ARE REQUIRED TO BE 8 CHARACTERS IRRESPECTIVE OF ROLES
-
-### after cloning and pulling authentication branch, create .env file and add you dsn like DSN="whatever the link is?multiStatements=true". Dont forget to add "?multiStatements=true" this at end of dsn else during migration it would fire error
+- now all passwords are required to be of 8 digit only
+- student ig and subject id would be int whereas teacher id and admin id would be strings
+- any unique id which is int is only allowed to be between 0 and 99999999
 
 # register api
 
@@ -13,7 +13,7 @@
 ```
 - curl -X POST <http://localhost:8090/register> \
      -H "Content-Type: application/json" \
-     -d '{"roleReq": "student/teacher/admin", "userName": "name here","pwd":"8 digit pwd here"}' 
+     -d '{"roleReq": "student/teacher/admin", "userName": "name here","pwd":"8 digit pwd here", "secretK":"appky if you have one"}' 
 ```
 
 # login api
@@ -261,6 +261,31 @@
      -d {"teacherId":"string of tId"} 
 ```
 
+## POST to <http://localhost:8090/admin/addTeacher>
+
+- it creates teacher new teacher in the table
+- JSON TAGS - (teacherId,tPwd,role,tName) required ones
+- additional tags - (subId,stdAllocated,sectionAllocated) (subject she teaches, and class she is assigned(last 2 tags) )
+
+```
+-  curl -X DELETE <http://localhost:8090/admin/addTeacher> \
+     -H "Content-Type: application/json" \
+     -b "userCookie=string.string.string" \
+     -d {"teacherId":"string of tId","tPwd":"password here","role":"teacher","tName":"his/her name", ....append additional tags accordingly} 
+```
+
+## PUT to <http://localhost:8090/admin/editTeacher>
+
+- it edits existing teacher data
+- additional tags - (subId,stdAllocated,sectionAllocated) (subject she teaches, and class she is assigned(last 2 tags) )
+
+```
+-  curl -X DELETE <http://localhost:8090/admin/editTeacher> \
+     -H "Content-Type: application/json" \
+     -b "userCookie=string.string.string" \
+     -d {"teacherId":"string of tId","tPwd":"password here","role":"teacher","tName":"his/her name", ....append additional tags accordingly}
+```
+
 ## Display GET to <http://localhost:8090/admin/display>
 
 - it displays other students data according to information required
@@ -280,7 +305,7 @@
 - JSON TAGS - (std)
 
 ```
-- curl -X GET <http://localhost:8090/admin/display> \
+- curl -X GET <http://localhost:8090/admin/displaySub> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
      -d '{"std": from 1 to 12}' 

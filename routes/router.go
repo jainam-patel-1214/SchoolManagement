@@ -49,14 +49,14 @@ func InitializeRouter() *gin.Engine {
 			admn.POST("/acceptRequest", admin.AcceptPendingReq)
 			admn.POST("/rejectRequest", admin.RejectRequest)
 			admn.DELETE("/delTeacher", admin.DeleteTeacher)
+			admn.POST("/addTeacher", admin.AddTeacher)
+			admn.PUT("/editTeacher", admin.EditTeacher)
 
 			admn.GET("/display", admin.DisplayStudents)
 			admn.GET("/displaySub", admin.DisplaySubject)
 			admn.GET("/studentreport", admin.Report)
 
 			admn.GET("/displayTeacherPerformance", admin.Performance)
-			admn.POST("/addTeacher", admin.AddTeacher)
-			admn.PUT("/editTeacher", admin.EditTeacher)
 			admn.POST("/createStud", admin.AddStudent)
 			admn.PUT("/updateStud", admin.EditStud)
 			admn.POST("/createSub", admin.CreateSub)
