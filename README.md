@@ -3,17 +3,19 @@
 - now all passwords are required to be of 8 digit only
 - student ig and subject id would be int whereas teacher id and admin id would be strings
 - any unique id which is int is only allowed to be between 0 and 99999999
+- **Limit of subject cant be viewed, edited or deleted for now so be careful entering values**
+- If you find any error in below apis pls raise comment
 
 # register api
 
 - api -> post to <http://localhost:8090/register> body - user, pwd and role you want  
-- JSON TAGS REQUIRED - (roleReq,userName,password)
+- JSON TAGS REQUIRED - (roleReq,yourName,password)
 - optional tag -> "secretK" send it to directly save your id. Skip pendingRequest part.
 
 ```
 - curl -X POST <http://localhost:8090/register> \
      -H "Content-Type: application/json" \
-     -d '{"roleReq": "student/teacher/admin", "userName": "name here","pwd":"8 digit pwd here", "secretK":"appky if you have one"}' 
+     -d '{"roleReq": "student/teacher/admin", "yourName": "name here","password":"8 digit pwd here", "secretK":"appky if you have one"}' 
 ```
 
 # login api

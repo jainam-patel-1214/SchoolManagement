@@ -37,7 +37,7 @@ type StudentInfo struct {
 }
 
 type DisplayConditions struct {
-	ViewByStd     int    `json:"viewByStd"`
+	ViewByStd     int    `json:"viewByStd" binding:"required"`
 	ViewBySection string `json:"viewBySection"`
 	MinPercent    int    `json:"minPercent"`
 	MaxPercent    int    `json:"maxPercent"`
@@ -45,6 +45,9 @@ type DisplayConditions struct {
 
 func HasOnlyAlphabets(s string) bool {
 	for _, r := range s {
+		if unicode.IsSpace(r) {
+			continue
+		}
 		if !unicode.IsLetter(r) {
 			return false
 		}
@@ -62,7 +65,7 @@ func DisplayStudents(ctx *gin.Context) {
 	if role == "student" {
 		var constraints DisplayConditions
 		if err := ctx.BindJSON(&constraints); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		if constraints.MaxPercent > 100 || constraints.MaxPercent < 0 {
@@ -74,7 +77,7 @@ func DisplayStudents(ctx *gin.Context) {
 			return
 		}
 		if constraints.ViewByStd > 12 || constraints.ViewByStd <= 0 {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standards from 1 to 12 are available"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standards from 1 to 12 are available + it is compulsory to provide standard"})
 			return
 		}
 		if len(constraints.ViewBySection) > 2 || !HasOnlyAlphabets(constraints.ViewBySection) {

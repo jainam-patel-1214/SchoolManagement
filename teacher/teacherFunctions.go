@@ -33,6 +33,9 @@ type TeacherInfo struct {
 
 func HasOnlyAlphabets(s string) bool {
 	for i, r := range s {
+		if unicode.IsSpace(r) {
+			continue
+		}
 		if !unicode.IsLetter(r) {
 			fmt.Println(i)
 			return false
@@ -71,7 +74,7 @@ func AddStudent(ctx *gin.Context) {
 			return
 		}
 		var amt int
-		if err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo=?", studentData.GR_NO).Scan(&amt); err != nil {
+		if err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo=?", studentData.GR_NO).Scan(&amt); err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -159,7 +162,7 @@ func EditStud(ctx *gin.Context) {
 			return
 		}
 		var amt int
-		if err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo=?", editBody.GR_NO).Scan(&amt); err != nil {
+		if err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo=?", editBody.GR_NO).Scan(&amt); err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -179,11 +182,9 @@ func EditStud(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "please accurate name of student"})
 			return
 		}
-		if editBody.Std != 0 {
-			if editBody.Std < 1 && editBody.Std > 12 {
-				ctx.JSON(http.StatusBadRequest, gin.H{"error": "standard shall be from 1 to 12"})
-				return
-			}
+		if editBody.Std != 0 && (editBody.Std < 1 || editBody.Std > 12) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "standard shall be from 1 to 12"})
+			return
 		}
 		if editBody.Section != "" && (len(editBody.Section) < 1 || len(editBody.Section) > 2 || !HasOnlyAlphabets(editBody.Section)) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "accurate section not provided"})
@@ -192,7 +193,7 @@ func EditStud(ctx *gin.Context) {
 
 		var defaultData EditBody
 		err = db.QueryRow("SELECT * FROM students WHERE grNo=?", editBody.GR_NO).Scan(&defaultData.GR_NO, &defaultData.StudentPwd, &defaultData.UserRole, &defaultData.StudentName, &defaultData.Std, &defaultData.Section)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
 			return
 		}
@@ -216,11 +217,16 @@ func EditStud(ctx *gin.Context) {
 				dbstr += ","
 			}
 		}
-		dbstr += ("WHERE grNo = " + strconv.Itoa(editBody.GR_NO))
+		dbstr += (" WHERE grNo = " + strconv.Itoa(editBody.GR_NO))
 
-		_, err = db.Exec(dbstr)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while updating db"})
+		if len(conditions) > 0 {
+			_, err = db.Exec(dbstr)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while updating db"})
+				return
+			}
+		} else {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "pls provide new vals to update"})
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"output": "student updated successfully"})
@@ -257,7 +263,7 @@ func CreateSub(ctx *gin.Context) {
 			return
 		}
 		var amt int
-		if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", subInfo.SubId).Scan(&amt); err != nil {
+		if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", subInfo.SubId).Scan(&amt); err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -280,13 +286,17 @@ func CreateSub(ctx *gin.Context) {
 
 		var limit int
 		err = db.QueryRow("SELECT subject_limit FROM subjectAllocation WHERE std = ?", subInfo.LevelStd).Scan(&limit)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error processing data"})
+			return
+		}
+		if err == sql.ErrNoRows {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("first set limit of subjects allocated in %d standard", subInfo.LevelStd)})
 			return
 		}
 		var count int
 		err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE levelStd = ?", subInfo.LevelStd).Scan(&count)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error processing data"})
 			return
 		}
@@ -337,7 +347,7 @@ func EditSub(ctx *gin.Context) {
 			return
 		}
 		var amt int
-		if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", editBody.SubId).Scan(&amt); err != nil {
+		if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", editBody.SubId).Scan(&amt); err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -364,7 +374,7 @@ func EditSub(ctx *gin.Context) {
 
 		var defaultData EditBody
 		err = db.QueryRow("SELECT * FROM subjects WHERE subId=?", editBody.SubId).Scan(&defaultData.SubId, &defaultData.SubName, &defaultData.LevelStd, &defaultData.Credits)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
 			return
 		}
@@ -445,7 +455,7 @@ func EnterMarks(ctx *gin.Context) {
 		}
 		var amountstud int
 		err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo = ?", marks.GrNo).Scan(&amountstud)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -455,7 +465,7 @@ func EnterMarks(ctx *gin.Context) {
 		}
 		var amountsub int
 		err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId = ?", marks.SubId).Scan(&amountsub)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -465,7 +475,7 @@ func EnterMarks(ctx *gin.Context) {
 		}
 		var amount int
 		err = db.QueryRow("SELECT COUNT(grNo) FROM marks WHERE grNo = ? AND subId = ?", marks.GrNo, marks.SubId).Scan(&amount)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -534,7 +544,7 @@ func EditMarks(ctx *gin.Context) {
 		}
 		var amountstud int
 		err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo = ?", editBody.GrNo).Scan(&amountstud)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -544,7 +554,7 @@ func EditMarks(ctx *gin.Context) {
 		}
 		var amountsub int
 		err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId = ?", editBody.SubId).Scan(&amountsub)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -554,7 +564,7 @@ func EditMarks(ctx *gin.Context) {
 		}
 		var amount int
 		err = db.QueryRow("SELECT COUNT(grNo) FROM marks WHERE grNo = ? AND subId = ?", editBody.GrNo, editBody.SubId).Scan(&amount)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -564,7 +574,7 @@ func EditMarks(ctx *gin.Context) {
 		}
 		var defaultData marks
 		err = db.QueryRow("SELECT * FROM marks WHERE grNo=? AND subId=?", editBody.GrNo, editBody.SubId).Scan(&defaultData.GrNo, &defaultData.SubId, &defaultData.TheoryMarks, &defaultData.PracticalMarks, &tempgrade)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "such grno and subject id combination entry not found"})
 			return
 		}
@@ -641,7 +651,7 @@ func AddReviews(ctx *gin.Context) {
 	}
 	var amount int
 	err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo = ?", reviewInfo.StudId).Scan(&amount)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -651,7 +661,7 @@ func AddReviews(ctx *gin.Context) {
 	}
 	var amt int
 	err = db.QueryRow("SELECT COUNT(grNo) FROM reviews WHERE grNo = ?", reviewInfo.StudId).Scan(&amt)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -695,7 +705,7 @@ func Performance(ctx *gin.Context) {
 	}
 	res := db.QueryRow("SELECT stdAllocated FROM teachers WHERE tId = ?", tid)
 	var std int
-	if err = res.Scan(&std); err != nil {
+	if err = res.Scan(&std); err != nil && err != sql.ErrNoRows {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
 		return
 	}
@@ -770,7 +780,7 @@ func DelStud(ctx *gin.Context) {
 		}
 		if stdGrno.GRno != 0 {
 			var amt int
-			if err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo=?", stdGrno.GRno).Scan(&amt); err != nil {
+			if err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo=?", stdGrno.GRno).Scan(&amt); err != nil && err != sql.ErrNoRows {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
@@ -817,7 +827,7 @@ func DelSub(ctx *gin.Context) {
 		}
 		if subid.SubId != 0 {
 			var amt int
-			if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", subid.SubId).Scan(&amt); err != nil {
+			if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", subid.SubId).Scan(&amt); err != nil && err != sql.ErrNoRows {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
@@ -840,7 +850,7 @@ func DelSub(ctx *gin.Context) {
 
 func Report(ctx *gin.Context) {
 	role, exist := ctx.Get("userrole")
-	if !exist || role != "student" {
+	if !exist || role != "teacher" {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
 		return
 	} else {
@@ -878,7 +888,7 @@ func Report(ctx *gin.Context) {
 			return
 		}
 		var amt int
-		if err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo=?", studParam.GR_NO).Scan(&amt); err != nil {
+		if err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo=?", studParam.GR_NO).Scan(&amt); err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -929,7 +939,7 @@ func Report(ctx *gin.Context) {
 		}
 		for res2.Next() {
 			var tp Comments
-			err = res1.Scan(&tp.TeacherId, &tp.TeacherName, &tp.Comment)
+			err = res2.Scan(&tp.TeacherId, &tp.TeacherName, &tp.Comment)
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cant process query output"})
 				return

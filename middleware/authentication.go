@@ -93,7 +93,7 @@ func CreateSession(ctx *gin.Context) {
 		} else {
 			var aId string
 			err := db.QueryRow("SELECT admin_id FROM admins WHERE admin_id=? AND admin_pwd=? ", credentials.UserId, credentials.Password).Scan(&aId)
-			if err != nil {
+			if err != nil && err != sql.ErrNoRows {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "invalid credentials"})
 				return
 			}

@@ -89,7 +89,7 @@ func CreatePendingReq(ctx *gin.Context) {
 				return
 			}
 		case "admin":
-			id := RandomString(10)
+			id := RandomString(8)
 			fmt.Println(id, PendingDb.Username, PendingDb.Pwd)
 			_, err = db.Exec("INSERT INTO admins (admin_id,admin_name,admin_pwd) VALUES (?,?,?)", id, PendingDb.Username, PendingDb.Pwd)
 			if err != nil {
@@ -158,10 +158,19 @@ func AcceptPendingReq(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "role your requested doesnot exist"})
 			return
 		}
+		var amt int
+		if err = db.QueryRow(fmt.Sprintf("SELECT COUNT(id) FROM pendingApplications WHERE username='%s' AND role_requested='%s' AND user_pwd='%s'", body.UserName, body.UserRole, body.UserPwd)).Scan(&amt); err != nil && err != sql.ErrNoRows {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if amt <= 0 {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "no such pending request exist"})
+			return
+		}
 		if body.UserRole == "student" {
 			switch body.UserId.(type) {
-			case int:
-				temp := body.UserId.(int)
+			case float64:
+				temp := int(body.UserId.(float64))
 				if temp <= 0 || temp > 99999999 {
 					ctx.JSON(http.StatusBadRequest, gin.H{"error": "student gr number shall be non negative and max 8 digit"})
 					return
@@ -246,7 +255,7 @@ func AcceptPendingReq(ctx *gin.Context) {
 			ctx.JSON(http.StatusOK, gin.H{"output": "student created"})
 			return
 		case "teacher":
-			if body.Std == 0 || body.Section == "" || body.UserId == 0 || body.UserName == "" || body.UserPwd == "" {
+			if body.UserId == 0 || body.UserName == "" || body.UserPwd == "" {
 				ctx.JSON(http.StatusBadRequest, gin.H{"error": "fill userid/std/section accurately"})
 				return
 			}
@@ -453,7 +462,7 @@ func AddTeacher(ctx *gin.Context) {
 			return
 		}
 		if tdata.TId == "" || len(tdata.TId) > 8 {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide a teacher id"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide a valid teacher id"})
 			return
 		}
 		if len(tdata.Tpwd) != 8 {
@@ -517,20 +526,22 @@ func AddTeacher(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "teacher id you wish to add already exist"})
 			return
 		}
-		var amt2 int
-		if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", tdata.SubAllocated).Scan(&amt2); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		if amt2 <= 0 {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject doesnot exist you want to assign to teacher"})
-			return
+		if tdata.SubAllocated != 0 {
+			var amt2 int
+			if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", tdata.SubAllocated).Scan(&amt2); err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			if amt2 <= 0 {
+				ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject doesnot exist you want to assign to teacher"})
+				return
+			}
 		}
 		if _, err = db.Exec("INSERT INTO teachers (tId,tPwd,userRole,tName,subId,stdAllocated,sectionAllocated) values (?,?,?,?,?,?,?)", tdata.TId, tdata.Tpwd, tdata.Role, tdata.Name, tdata.SubAllocated, tdata.StdAllocated, tdata.SectionAllocated); err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error in DB, cant insert"})
 			return
 		}
-		ctx.JSON(http.StatusOK, gin.H{"output": "DELETED SUCCESSFULLY"})
+		ctx.JSON(http.StatusOK, gin.H{"output": "ADDED SUCCESSFULLY"})
 	} else {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
 		return
@@ -551,6 +562,15 @@ func EditTeacher(ctx *gin.Context) {
 		}
 		defer db.Close()
 		var tdata struct {
+			TId              string `json:"teacherId" binding:"required"`
+			Tpwd             string `json:"tPwd"`
+			Role             string `json:"role"`
+			Name             string `json:"tName"`
+			SubAllocated     int    `json:"subId"`
+			StdAllocated     int    `json:"stdAllocated"`
+			SectionAllocated string `json:"sectionAllocated"`
+		}
+		var defaultData struct {
 			TId              string `json:"teacherId" binding:"required"`
 			Tpwd             string `json:"tPwd"`
 			Role             string `json:"role"`
@@ -586,7 +606,7 @@ func EditTeacher(ctx *gin.Context) {
 				return
 			}
 		}
-		if tdata.Role != "teacher" {
+		if tdata.Role != "" && tdata.Role != "teacher" {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid role provided, it shall always be teacher"})
 			return
 		}
@@ -594,7 +614,7 @@ func EditTeacher(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide a valid teacher id"})
 			return
 		}
-		if len(tdata.Tpwd) != 8 {
+		if tdata.Tpwd != "" && len(tdata.Tpwd) != 8 {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide 8 digit pwd"})
 			return
 		}
@@ -614,30 +634,61 @@ func EditTeacher(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "if you allocate standard, section is needed"})
 			return
 		}
-		if tdata.SubAllocated != 0 && tdata.SubAllocated < 0 && tdata.SubAllocated > 99999999 {
+		if tdata.SubAllocated != 0 && (tdata.SubAllocated < 0 || tdata.SubAllocated > 99999999) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject it provided"})
 			return
 		}
-		var amt2 int
-		if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", tdata.SubAllocated).Scan(&amt2); err != nil {
+		fmt.Println("flag 0", tdata.SubAllocated)
+		if tdata.SubAllocated != 0 {
+			var amt2 int
+			if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", tdata.SubAllocated).Scan(&amt2); err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			if amt2 <= 0 {
+				ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject doesnot exist you want to assign to teacher"})
+				return
+			}
+		}
+		if err = db.QueryRow("SELECT * FROM teachers WHERE tId=?", tdata.TId).Scan(&defaultData.TId, &defaultData.Tpwd, &defaultData.Role, &defaultData.Name, &defaultData.SubAllocated, &defaultData.StdAllocated, &defaultData.SectionAllocated); err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		if amt2 <= 0 {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject doesnot exist you want to assign to teacher"})
+		if tdata.Name == defaultData.Name {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "new name = old name, not valid"})
 			return
 		}
-		dbstr := "UPDATES teachers SET "
+		if tdata.Tpwd == defaultData.Tpwd {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "new pwd = old pwd, not valid"})
+			return
+		}
+		if tdata.SectionAllocated == defaultData.SectionAllocated && defaultData.SectionAllocated != "" {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "new section = old section, not valid"})
+			return
+		}
+		if tdata.StdAllocated == defaultData.StdAllocated && defaultData.StdAllocated != 0 {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "new std = old std, not valid"})
+			return
+		}
+		if tdata.SubAllocated == defaultData.SubAllocated && defaultData.SubAllocated != 0 {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "new subject = old subject, not valid"})
+			return
+		}
+		dbstr := "UPDATE teachers SET "
 		var constraints []string
 		if tdata.Name != "" {
-			constraints = append(constraints, ("tName = " + tdata.Name))
+			constraints = append(constraints, ("tName = '"+tdata.Name)+"'")
 		}
 		if tdata.Tpwd != "" {
-			constraints = append(constraints, ("tPwd = " + tdata.Tpwd))
+			constraints = append(constraints, ("tPwd = '"+tdata.Tpwd)+"'")
 		}
+
+		fmt.Println("flag 01", tdata.SubAllocated)
+		fmt.Println("flag 1", constraints)
 		if tdata.SubAllocated != 0 {
 			constraints = append(constraints, ("subId = " + strconv.Itoa(tdata.SubAllocated)))
 		}
+		fmt.Println("flag 2", constraints)
 		if tdata.SectionAllocated != "" {
 			if tdata.StdAllocated != 0 {
 				constraints = append(constraints, ("stdAllocated = " + strconv.Itoa(tdata.StdAllocated) + ", " + "sectionAllocated = " + tdata.SectionAllocated))
@@ -651,22 +702,67 @@ func EditTeacher(ctx *gin.Context) {
 				count := 0
 				for i, v := range constraints {
 					if count == 0 {
-						dbstr += v
+						count++
 					}
-					count++
+					dbstr += v
 					if count > 0 && i != len(constraints)-1 {
+						fmt.Println((len(constraints) - 1), "-", i, "-", count, constraints)
 						dbstr += ", "
 					}
 				}
+				dbstr += " "
 			}
 		}
-		dbstr += ("WHERE tId =" + tdata.TId)
+		dbstr += ("WHERE tId = '" + tdata.TId + "'")
 		if _, err = db.Exec(dbstr); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error() + dbstr})
+			return
 		}
-		ctx.JSON(http.StatusOK, gin.H{"output": "DELETED SUCCESSFULLY"})
+		ctx.JSON(http.StatusOK, gin.H{"output": "UPDATED SUCCESSFULLY"})
 	} else {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
+		return
+	}
+}
+func SetSubLimit(ctx *gin.Context) {
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "admin" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
+		return
+	}
+	if role == "admin" {
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
+			return
+		}
+		defer db.Close()
+
+		var limitData struct {
+			Standard int `json:"std" binding:"required"`
+			SubLimit int `json:"limit" binding:"required"`
+		}
+		if err = ctx.Bind(&limitData); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if limitData.Standard == 0 || limitData.SubLimit == 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide standard and limit accurately"})
+			return
+		}
+		if limitData.Standard != 0 && (limitData.Standard < 1 || limitData.Standard > 12) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide standard between 1 and 12"})
+			return
+		}
+		if limitData.SubLimit != 0 && limitData.SubLimit < 1 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide positive limit"})
+			return
+		}
+		if _, err = db.Exec("INSERT INTO subjectAllocation (std,subject_limit) VALUES (?,?)", limitData.Standard, limitData.SubLimit); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": "limit set successfully"})
 		return
 	}
 }

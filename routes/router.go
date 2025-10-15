@@ -65,6 +65,7 @@ func InitializeRouter() *gin.Engine {
 			admn.PUT("/updateMarks", admin.EditMarks)
 			admn.DELETE("/delStudent", admin.DelStud)
 			admn.DELETE("/delSubject", admin.DelSub)
+			admn.POST("/setSubLimit", admin.SetSubLimit)
 		}
 	}
 	return r
