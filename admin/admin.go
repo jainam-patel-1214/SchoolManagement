@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"strconv"
 
 	"example.com/main/database"
 	"github.com/gin-gonic/gin"
@@ -193,6 +194,12 @@ func AcceptPendingReq(ctx *gin.Context) {
 				if len(temp) > 8 {
 					ctx.JSON(http.StatusBadRequest, gin.H{"error": "teacher/admin id shall be less than 8 characters in size"})
 					return
+				}
+				if body.Std != 0 && body.Std < 13 && body.Std > 0 {
+					if body.Section == "" {
+						ctx.JSON(http.StatusBadRequest, gin.H{"error": "standard needs a section to be provided"})
+						return
+					}
 				}
 				if body.Section != "" {
 					if !HasOnlyAlphabets(body.Section) {
@@ -423,5 +430,243 @@ func RejectRequest(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{"output": "rejected successfully"})
 	} else {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
+	}
+}
+func AddTeacher(ctx *gin.Context) {
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "admin" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
+		return
+	}
+	if role == "admin" {
+		var tdata struct {
+			TId              string `json:"teacherId" binding:"required"`
+			Tpwd             string `json:"tPwd" binding:"required"`
+			Role             string `json:"role" binding:"required"`
+			Name             string `json:"tName" binding:"required"`
+			SubAllocated     int    `json:"subId"`
+			StdAllocated     int    `json:"stdAllocated"`
+			SectionAllocated string `json:"sectionAllocated"`
+		}
+		if err := ctx.Bind(&tdata); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unable to read body"})
+			return
+		}
+		if tdata.TId == "" || len(tdata.TId) > 8 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide a teacher id"})
+			return
+		}
+		if len(tdata.Tpwd) != 8 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide 8 digit pwd"})
+			return
+		}
+		if tdata.Name == "" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide a teacher name"})
+			return
+		} else {
+			if tdata.Name != "" && !HasOnlyAlphabets(tdata.Name) {
+				ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid name provided"})
+				return
+			}
+		}
+		if tdata.StdAllocated != 0 && tdata.StdAllocated < 0 && tdata.StdAllocated > 12 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "standard from 1 to 12 are only allowed"})
+			return
+		}
+		if tdata.SectionAllocated != "" && !HasOnlyAlphabets(tdata.SectionAllocated) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid section provided"})
+			return
+		}
+		if tdata.SectionAllocated != "" && tdata.StdAllocated == 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "if you allocate section, standard is needed"})
+			return
+		}
+		if tdata.SectionAllocated == "" && tdata.StdAllocated != 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "if you allocate standard, section is needed"})
+			return
+		}
+		if tdata.Role != "teacher" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid role provided, it shall always be teacher"})
+			return
+		}
+		if len(tdata.Name) > 50 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "too long name provided"})
+			return
+		}
+		if tdata.SubAllocated != 0 && tdata.SubAllocated < 0 && tdata.SubAllocated > 99999999 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject it provided"})
+			return
+		}
+		if len(tdata.TId) > 8 || len(tdata.TId) <= 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide a valid teacher id"})
+			return
+		}
+		var amt int
+
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
+			return
+		}
+		defer db.Close()
+		if err = db.QueryRow("SELECT COUNT(tId) FROM teachers WHERE tId=?", tdata.TId).Scan(&amt); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if amt > 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "teacher id you wish to add already exist"})
+			return
+		}
+		var amt2 int
+		if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", tdata.SubAllocated).Scan(&amt2); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if amt2 <= 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject doesnot exist you want to assign to teacher"})
+			return
+		}
+		if _, err = db.Exec("INSERT INTO teachers (tId,tPwd,userRole,tName,subId,stdAllocated,sectionAllocated) values (?,?,?,?,?,?,?)", tdata.TId, tdata.Tpwd, tdata.Role, tdata.Name, tdata.SubAllocated, tdata.StdAllocated, tdata.SectionAllocated); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error in DB, cant insert"})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": "DELETED SUCCESSFULLY"})
+	} else {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
+		return
+	}
+}
+
+func EditTeacher(ctx *gin.Context) {
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "admin" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
+		return
+	}
+	if role == "admin" {
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
+			return
+		}
+		defer db.Close()
+		var tdata struct {
+			TId              string `json:"teacherId" binding:"required"`
+			Tpwd             string `json:"tPwd"`
+			Role             string `json:"role"`
+			Name             string `json:"tName"`
+			SubAllocated     int    `json:"subId"`
+			StdAllocated     int    `json:"stdAllocated"`
+			SectionAllocated string `json:"sectionAllocated"`
+		}
+		if err := ctx.Bind(&tdata); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unable to read body"})
+			return
+		}
+		if tdata.TId == "" || len(tdata.TId) > 8 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide a teacher id"})
+			return
+		}
+		var amt int
+		if err := db.QueryRow("SELECT COUNT(tId) FROM teachers WHERE tId=?", tdata.TId).Scan(&amt); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if amt <= 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "teacher doesnot exist you want to edit"})
+			return
+		}
+		if len(tdata.Name) > 50 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "too long name provided"})
+			return
+		}
+		if tdata.Name != "" {
+			if !HasOnlyAlphabets(tdata.Name) {
+				ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid name provided"})
+				return
+			}
+		}
+		if tdata.Role != "teacher" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid role provided, it shall always be teacher"})
+			return
+		}
+		if len(tdata.TId) > 8 || len(tdata.TId) <= 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide a valid teacher id"})
+			return
+		}
+		if len(tdata.Tpwd) != 8 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "provide 8 digit pwd"})
+			return
+		}
+		if tdata.StdAllocated != 0 && tdata.StdAllocated < 0 && tdata.StdAllocated > 12 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "standard from 1 to 12 are only allowed"})
+			return
+		}
+		if tdata.SectionAllocated != "" && !HasOnlyAlphabets(tdata.SectionAllocated) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid section provided"})
+			return
+		}
+		if tdata.SectionAllocated != "" && tdata.StdAllocated == 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "if you allocate section, standard is needed"})
+			return
+		}
+		if tdata.SectionAllocated == "" && tdata.StdAllocated != 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "if you allocate standard, section is needed"})
+			return
+		}
+		if tdata.SubAllocated != 0 && tdata.SubAllocated < 0 && tdata.SubAllocated > 99999999 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject it provided"})
+			return
+		}
+		var amt2 int
+		if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", tdata.SubAllocated).Scan(&amt2); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if amt2 <= 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject doesnot exist you want to assign to teacher"})
+			return
+		}
+		dbstr := "UPDATES teachers SET "
+		var constraints []string
+		if tdata.Name != "" {
+			constraints = append(constraints, ("tName = " + tdata.Name))
+		}
+		if tdata.Tpwd != "" {
+			constraints = append(constraints, ("tPwd = " + tdata.Tpwd))
+		}
+		if tdata.SubAllocated != 0 {
+			constraints = append(constraints, ("subId = " + strconv.Itoa(tdata.SubAllocated)))
+		}
+		if tdata.SectionAllocated != "" {
+			if tdata.StdAllocated != 0 {
+				constraints = append(constraints, ("stdAllocated = " + strconv.Itoa(tdata.StdAllocated) + ", " + "sectionAllocated = " + tdata.SectionAllocated))
+			}
+		}
+		if len(constraints) <= 0 {
+			ctx.JSON(http.StatusOK, gin.H{"output": "you didnot requested any changes"})
+			return
+		} else {
+			if len(constraints) > 0 {
+				count := 0
+				for i, v := range constraints {
+					if count == 0 {
+						dbstr += v
+					}
+					count++
+					if count > 0 && i != len(constraints)-1 {
+						dbstr += ", "
+					}
+				}
+			}
+		}
+		dbstr += ("WHERE tId =" + tdata.TId)
+		if _, err = db.Exec(dbstr); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		ctx.JSON(http.StatusOK, gin.H{"output": "DELETED SUCCESSFULLY"})
+	} else {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
+		return
 	}
 }

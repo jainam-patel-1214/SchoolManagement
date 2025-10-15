@@ -340,6 +340,15 @@ func AddStudent(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid gr no provided"})
 			return
 		}
+		var amt int
+		if err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo=?", studentData.GR_NO).Scan(&amt); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if amt > 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "student already exist with gr number provided, try updating student details"})
+			return
+		}
 		if len(studentData.StudentPwd) != 8 {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "password length required of 8 characters"})
 			return
@@ -420,6 +429,15 @@ func EditStud(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid gr no provided"})
 			return
 		}
+		var amt int
+		if err = db.QueryRow("SELECT COUNT(grNo) FROM students WHERE grNo=?", editBody.GR_No).Scan(&amt); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if amt <= 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "student doesnt exist with gr number provided, try creating student"})
+			return
+		}
 		if len(editBody.StudentPwd) != 8 {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "password length required of 8 characters"})
 			return
@@ -454,13 +472,13 @@ func EditStud(ctx *gin.Context) {
 		if editBody.StudentPwd != defaultData.StudentPwd && editBody.StudentPwd != "" {
 			conditions = append(conditions, ("sPwd = '" + editBody.StudentPwd + "'"))
 		}
-		if editBody.StudentName != defaultData.StudentName && editBody.StudentName != "" {
+		if editBody.StudentName != defaultData.StudentName && editBody.StudentName != "" && HasOnlyAlphabets(editBody.StudentName) {
 			conditions = append(conditions, ("studName = '" + editBody.StudentName + "'"))
 		}
-		if editBody.Std != defaultData.Std && editBody.Std <= 12 && editBody.Std > 0 {
+		if editBody.Std != 0 && editBody.Std != defaultData.Std && editBody.Std <= 12 && editBody.Std > 0 {
 			conditions = append(conditions, ("std = " + strconv.Itoa(editBody.Std)))
 		}
-		if editBody.Section != defaultData.Section && editBody.Section != "" {
+		if editBody.Section != defaultData.Section && editBody.Section != "" && HasOnlyAlphabets(editBody.Section) {
 			conditions = append(conditions, ("section = '" + editBody.Section + "'"))
 		}
 		for i, v := range conditions {
@@ -507,6 +525,15 @@ func CreateSub(ctx *gin.Context) {
 
 		if subInfo.SubId <= 0 || subInfo.SubId > 99999999 {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject id, pls enter max 8 digit id"})
+			return
+		}
+		var amt int
+		if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", subInfo.SubId).Scan(&amt); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if amt > 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject already exist with id provided, try updating subject details"})
 			return
 		}
 		if subInfo.SubName == "" || len(subInfo.SubName) > 50 {
@@ -580,6 +607,15 @@ func EditSub(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject id, pls enter max 8 digit id"})
 			return
 		}
+		var amt int
+		if err = db.QueryRow("SELECT COUNT(subId) FROM subjects WHERE subId=?", editBody.SubId).Scan(&amt); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if amt <= 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject doesnot exist with id provided, try creating subject details"})
+			return
+		}
 		if editBody.SubName != "" || len(editBody.SubName) > 50 {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject name, pls provide name upto 50 chars"})
 			return
@@ -611,10 +647,10 @@ func EditSub(ctx *gin.Context) {
 		if editBody.SubName != defaultData.SubName && editBody.SubName != "" {
 			conditions = append(conditions, ("subName = '" + editBody.SubName + "'"))
 		}
-		if editBody.LevelStd != defaultData.LevelStd && editBody.LevelStd <= 12 && editBody.LevelStd > 0 {
+		if editBody.LevelStd != 0 && editBody.LevelStd != defaultData.LevelStd && editBody.LevelStd <= 12 && editBody.LevelStd > 0 {
 			conditions = append(conditions, ("levelStd = " + strconv.Itoa(editBody.LevelStd)))
 		}
-		if editBody.Credits != defaultData.Credits && editBody.Credits != 0 {
+		if editBody.Credits != defaultData.Credits {
 			conditions = append(conditions, ("credits = " + strconv.Itoa(editBody.Credits)))
 		}
 		for i, v := range conditions {
@@ -776,7 +812,7 @@ func EditMarks(ctx *gin.Context) {
 			return
 		}
 		if amountstud <= 0 {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "student not exist whom you want to add marks"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "student not exist whom you want to edit marks"})
 			return
 		}
 		var amountsub int
@@ -786,7 +822,7 @@ func EditMarks(ctx *gin.Context) {
 			return
 		}
 		if amountsub <= 0 {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject not exist whom you want to add marks"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject not exist whom you want to rdit marks"})
 			return
 		}
 		var amount int
@@ -796,7 +832,7 @@ func EditMarks(ctx *gin.Context) {
 			return
 		}
 		if amount <= 0 {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "record already present please try updating it"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "record already present please try creating it"})
 			return
 		}
 		var defaultData marks
@@ -883,6 +919,15 @@ func Performance(ctx *gin.Context) {
 		}
 		if amt <= 0 {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "no such teacher found with entered teacher id"})
+			return
+		}
+		var teachFlag any
+		if err = db.QueryRow("SELECT stdAllocated FROM teachers WHERE tId=?", TeacherId.Tid).Scan(&teachFlag); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if teachFlag == 0 || teachFlag == nil || teachFlag == "" || teachFlag == false {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "teacher id you provided doesnt take any subject"})
 			return
 		}
 	} else {

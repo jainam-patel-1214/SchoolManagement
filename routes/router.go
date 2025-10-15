@@ -55,6 +55,8 @@ func InitializeRouter() *gin.Engine {
 			admn.GET("/studentreport", admin.Report)
 
 			admn.GET("/displayTeacherPerformance", admin.Performance)
+			admn.POST("/addTeacher", admin.AddTeacher)
+			admn.PUT("/editTeacher", admin.EditTeacher)
 			admn.POST("/createStud", admin.AddStudent)
 			admn.PUT("/updateStud", admin.EditStud)
 			admn.POST("/createSub", admin.CreateSub)
