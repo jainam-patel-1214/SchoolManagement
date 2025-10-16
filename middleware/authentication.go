@@ -46,9 +46,28 @@ func CreateSession(ctx *gin.Context) {
 		Password string `json:"password"`
 	}
 	claim := &JwtClaims{}
-
+	idExist := false
 	if err := ctx.Bind(&credentials); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	switch credentials.UserId.(type) {
+	case float64:
+		temp := int(credentials.UserId.(float64))
+		if temp < 0 || temp > 99999999 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid student id"})
+			return
+		}
+
+	case string:
+		temp := credentials.UserId.(string)
+		if len(temp) > 8 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid teacher/admin id"})
+			return
+		}
+	}
+	if credentials.Password != "" && len(credentials.Password) != 8 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid pwd"})
 		return
 	}
 	res, err := db.Query("SELECT grNo, userRole FROM students WHERE grNo=? AND sPwd=? ", credentials.UserId, credentials.Password)
@@ -66,6 +85,7 @@ func CreateSession(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, err)
 			return
 		}
+		idExist = true
 		fmt.Println("in student")
 		claim.Uid = strconv.Itoa(grNo)
 		claim.Role = role
@@ -85,6 +105,7 @@ func CreateSession(ctx *gin.Context) {
 				ctx.JSON(http.StatusInternalServerError, err)
 				return
 			}
+			idExist = true
 			fmt.Println("in teacher")
 			claim.Uid = tId
 			claim.Role = role
@@ -93,16 +114,21 @@ func CreateSession(ctx *gin.Context) {
 		} else {
 			var aId string
 			err := db.QueryRow("SELECT admin_id FROM admins WHERE admin_id=? AND admin_pwd=? ", credentials.UserId, credentials.Password).Scan(&aId)
-			if err != nil && err != sql.ErrNoRows {
+			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "invalid credentials"})
 				return
 			}
+			idExist = true
 			fmt.Println("in admin")
 			claim.Uid = aId
 			claim.Role = "admin"
 			claim.RegisteredClaims.IssuedAt = jwt.NewNumericDate(time.Now())
 			claim.RegisteredClaims.ExpiresAt = jwt.NewNumericDate(temptime)
 		}
+	}
+	if !idExist {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		return
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 	tokenString, err := token.SignedString([]byte("9tvfPMwMVQHdksYp"))
