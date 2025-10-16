@@ -57,7 +57,7 @@ func DisplayStudents(ctx *gin.Context) {
 			return
 		}
 		if constraints.ViewByStd > 12 || constraints.ViewByStd <= 0 {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standards ranging from 1 to 12 are available"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standards ranging from 1 to 12 are available, provide accurate 'viewByStd' in body"})
 			return
 		}
 		if len(constraints.ViewBySection) > 2 || !HasOnlyAlphabets(constraints.ViewBySection) {
@@ -576,7 +576,7 @@ func CreateSub(ctx *gin.Context) {
 			return
 		}
 		if err == sql.ErrNoRows {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("first set limit of subjects allocated in %d standard", subInfo.LevelStd)})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("first set limit of subjects allocated in standard %d", subInfo.LevelStd)})
 			return
 		}
 		var count int
