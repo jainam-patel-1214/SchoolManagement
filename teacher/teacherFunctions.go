@@ -711,16 +711,17 @@ func Performance(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error setting your id"})
 		return
 	}
-	res := db.QueryRow("SELECT subId FROM teachers WHERE tId = ?", tid)
+	res := db.QueryRow("SELECT subId,stdAllocated FROM teachers WHERE tId = ?", tid)
 	var std int
-	if err = res.Scan(&std); err != nil && err != sql.ErrNoRows {
+	var stda int
+	if err = res.Scan(&std, &stda); err != nil && err != sql.ErrNoRows {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
 		return
-	} else if std == 0 {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject is not allocated to teacher whose performance you requested. thus no performance can be fetched"})
+	} else if std == 0 || stda == 0 {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject/std is not allocated to teacher whose performance you requested. thus no performance can be fetched"})
 		return
 	} else if err == sql.ErrNoRows {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject is not allocated to teacher whose performance you requested. thus no performance can be fetched"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject/std is not allocated to teacher whose performance you requested. thus no performance can be fetched"})
 		return
 	}
 
