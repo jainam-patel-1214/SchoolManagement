@@ -694,7 +694,7 @@ func EditTeacher(ctx *gin.Context) {
 		fmt.Println("flag 2", constraints)
 		if tdata.SectionAllocated != "" {
 			if tdata.StdAllocated != 0 {
-				constraints = append(constraints, ("stdAllocated = " + strconv.Itoa(tdata.StdAllocated) + ", " + "sectionAllocated = " + tdata.SectionAllocated))
+				constraints = append(constraints, ("stdAllocated = " + strconv.Itoa(tdata.StdAllocated) + ", " + "sectionAllocated = '" + tdata.SectionAllocated + "'"))
 			}
 		}
 		if len(constraints) <= 0 {

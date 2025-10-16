@@ -449,7 +449,7 @@ func EditStud(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "student doesnt exist with gr number provided, try creating student"})
 			return
 		}
-		if len(editBody.StudentPwd) != 8 {
+		if len(editBody.StudentPwd) != 8 && editBody.StudentPwd != "" {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "password length required of 8 characters"})
 			return
 		}
