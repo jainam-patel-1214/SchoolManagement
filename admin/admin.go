@@ -650,8 +650,11 @@ func EditTeacher(ctx *gin.Context) {
 				return
 			}
 		}
-		if err = db.QueryRow("SELECT * FROM teachers WHERE tId=?", tdata.TId).Scan(&defaultData.TId, &defaultData.Tpwd, &defaultData.Role, &defaultData.Name, &defaultData.SubAllocated, &defaultData.StdAllocated, &defaultData.SectionAllocated); err != nil {
+		if err = db.QueryRow("SELECT * FROM teachers WHERE tId=?", tdata.TId).Scan(&defaultData.TId, &defaultData.Tpwd, &defaultData.Role, &defaultData.Name, &defaultData.SubAllocated, &defaultData.StdAllocated, &defaultData.SectionAllocated); err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		} else if err == sql.ErrNoRows {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "teacher not found to edit"})
 			return
 		}
 		if tdata.Name == defaultData.Name {

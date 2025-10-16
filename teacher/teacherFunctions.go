@@ -197,6 +197,10 @@ func EditStud(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
 			return
 		}
+		if err == sql.ErrNoRows {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "student not found to edit"})
+			return
+		}
 		dbstr := "UPDATE students SET "
 		var conditions []string
 		if editBody.StudentPwd != defaultData.StudentPwd && editBody.StudentPwd != "" {
@@ -287,7 +291,7 @@ func CreateSub(ctx *gin.Context) {
 		var limit int
 		err = db.QueryRow("SELECT subject_limit FROM subjectAllocation WHERE std = ?", subInfo.LevelStd).Scan(&limit)
 		if err != nil && err != sql.ErrNoRows {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error processing data"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error processing"})
 			return
 		}
 		if err == sql.ErrNoRows {
@@ -376,6 +380,10 @@ func EditSub(ctx *gin.Context) {
 		err = db.QueryRow("SELECT * FROM subjects WHERE subId=?", editBody.SubId).Scan(&defaultData.SubId, &defaultData.SubName, &defaultData.LevelStd, &defaultData.Credits)
 		if err != nil && err != sql.ErrNoRows {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error while processing data"})
+			return
+		}
+		if err == sql.ErrNoRows {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "no subject found to edit"})
 			return
 		}
 		dbstr := "UPDATE subjects SET "
@@ -574,7 +582,7 @@ func EditMarks(ctx *gin.Context) {
 		}
 		var defaultData marks
 		err = db.QueryRow("SELECT * FROM marks WHERE grNo=? AND subId=?", editBody.GrNo, editBody.SubId).Scan(&defaultData.GrNo, &defaultData.SubId, &defaultData.TheoryMarks, &defaultData.PracticalMarks, &tempgrade)
-		if err != nil && err != sql.ErrNoRows {
+		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "such grno and subject id combination entry not found"})
 			return
 		}
@@ -703,12 +711,19 @@ func Performance(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error setting your id"})
 		return
 	}
-	res := db.QueryRow("SELECT stdAllocated FROM teachers WHERE tId = ?", tid)
+	res := db.QueryRow("SELECT subId FROM teachers WHERE tId = ?", tid)
 	var std int
 	if err = res.Scan(&std); err != nil && err != sql.ErrNoRows {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
 		return
+	} else if std == 0 {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject is not allocated to teacher whose performance you requested. thus no performance can be fetched"})
+		return
+	} else if err == sql.ErrNoRows {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject is not allocated to teacher whose performance you requested. thus no performance can be fetched"})
+		return
 	}
+
 	type Teachers struct {
 		Tid                 string
 		TName               string
