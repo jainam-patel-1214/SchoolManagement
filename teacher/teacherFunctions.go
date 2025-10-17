@@ -826,7 +826,7 @@ func DelSub(ctx *gin.Context) {
 	}
 	if role == "teacher" {
 		var subid struct {
-			SubId int `json:"subid" binding:"required"`
+			SubId int `json:"subId" binding:"required"`
 		}
 		if err := ctx.BindJSON(&subid); err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unable to read body"})

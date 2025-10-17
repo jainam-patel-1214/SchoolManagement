@@ -128,7 +128,7 @@ func AcceptPendingReq(ctx *gin.Context) {
 			UserName string `json:"uName" binding:"required"`
 			UserPwd  string `json:"uPwd" binding:"required"`
 			UserRole string `json:"uRole" binding:"required"`
-			UserId   any    `json:"Uid"`
+			UserId   any    `json:"Uid" binding:"required"`
 			Std      int    `json:"std"`
 			Section  string `json:"section"`
 			SubId    int    `json:"subId"`
