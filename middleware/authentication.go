@@ -149,52 +149,62 @@ func CreateSession(ctx *gin.Context) {
 
 func ValidateSession() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		if userCookie, err := ctx.Cookie("userCookie"); err != nil {
+		userCookie, err := ctx.Cookie("userCookie")
+		fmt.Println("cookie received - ", userCookie, "error received - ", err)
+		if err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "token not found"})
+			ctx.Abort()
 			return
-		} else {
-			db, err := sql.Open("mysql", dsn)
+		}
+		if userCookie == "" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "token not found"})
+			ctx.Abort()
+			return
+		}
+		// fmt.Println(ck, err)
+		// userCookie := ck.Value
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "error authorizing token validity"})
+			return
+		}
+		defer db.Close()
+		fmt.Println(userCookie)
+		claim := &JwtClaims{}
+
+		token, err := jwt.ParseWithClaims(userCookie, claim, func(t *jwt.Token) (any, error) {
+			return []byte("9tvfPMwMVQHdksYp"), nil
+		})
+		if err != nil || !token.Valid {
+			_, err = db.Exec("DELETE FROM activeSessions WHERE sessiontoken=?", userCookie)
+			if err != nil {
+				log.Fatal("(ValidateSession) error in deleting active session", err)
+				return
+			}
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalidx or expired token"})
+			return
+		}
+		if claim.Role != "student" && claim.Role != "teacher" && claim.Role != "admin" {
+			fmt.Println("\n\n\n role \n\n", claim.Role)
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invaliddd or expired token provided"})
+			return
+		}
+
+		unixTime := claim.RegisteredClaims.ExpiresAt.Time
+		tmptime := time.Now()
+		if tmptime.After(unixTime) {
+			_, err = db.Exec("DELETE FROM activeSessions WHERE sessiontoken = ?", userCookie)
 			if err != nil {
 				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "error authorizing token validity"})
 				return
 			}
-			defer db.Close()
-			// fmt.Println(userCookie)
-			claim := &JwtClaims{}
-
-			token, err := jwt.ParseWithClaims(userCookie, claim, func(t *jwt.Token) (any, error) {
-				return []byte("9tvfPMwMVQHdksYp"), nil
-			})
-			if err != nil || !token.Valid {
-				_, err = db.Exec("DELETE FROM activeSessions WHERE sessiontoken=?", userCookie)
-				if err != nil {
-					log.Fatal("(ValidateSession) error in deleting active session", err)
-					return
-				}
-				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
-				return
-			}
-			if claim.Role != "student" && claim.Role != "teacher" && claim.Role != "admin" {
-				fmt.Println("\n\n\n role \n\n", claim.Role)
-				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token provided"})
-				return
-			}
-
-			unixTime := claim.RegisteredClaims.ExpiresAt.Time
-			tmptime := time.Now()
-			if tmptime.After(unixTime) {
-				_, err = db.Exec("DELETE FROM activeSessions WHERE sessiontoken = ?", userCookie)
-				if err != nil {
-					ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "error authorizing token validity"})
-					return
-				}
-				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "expired token login again"})
-				return
-			}
-			ctx.Set("userrole", claim.Role)
-			ctx.Set("UiD", claim.Uid)
-			ctx.Next()
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "expired token login again"})
+			return
 		}
+		ctx.Set("userrole", claim.Role)
+		ctx.Set("UiD", claim.Uid)
+		ctx.Next()
+
 	}
 
 }
