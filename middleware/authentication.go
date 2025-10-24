@@ -156,6 +156,8 @@ func ValidateSession() gin.HandlerFunc {
 			ctx.Abort()
 			return
 		}
+		t := ctx.Request.CookiesNamed("userCookie")
+		fmt.Println(t)
 		if userCookie == "" || len([]byte(userCookie)) < 3 {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "token not found"})
 			ctx.Abort()

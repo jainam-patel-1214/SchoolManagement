@@ -502,7 +502,7 @@ func EditStud(ctx *gin.Context) {
 				dbstr += ","
 			}
 		}
-		dbstr += ("WHERE grNo = " + strconv.Itoa(editBody.GR_No))
+		dbstr += (" WHERE grNo = " + strconv.Itoa(editBody.GR_No))
 
 		if len(conditions) > 0 {
 			_, err = db.Exec(dbstr)
