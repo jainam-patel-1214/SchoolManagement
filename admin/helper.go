@@ -461,11 +461,9 @@ func EditStud(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "please accurate name of student"})
 			return
 		}
-		if editBody.Std != 0 {
-			if editBody.Std < 1 && editBody.Std > 12 {
-				ctx.JSON(http.StatusBadRequest, gin.H{"error": "standard shall be from 1 to 12"})
-				return
-			}
+		if editBody.Std != 0 && (editBody.Std < 1 || editBody.Std > 12) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "standard shall be from 1 to 12"})
+			return
 		}
 		if editBody.Section != "" && (len(editBody.Section) < 1 || len(editBody.Section) > 2) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "accurate section not provided"})
