@@ -10,6 +10,7 @@ import (
 
 	"example.com/main/database"
 	"github.com/gin-gonic/gin"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 var dsn = database.InitDb()
@@ -122,16 +123,27 @@ func DisplayStudents(ctx *gin.Context) {
 		}
 		fmt.Println(dbstr)
 
-		db, err := sql.Open("mysql", dsn)
+		// db, err := sql.Open("mysql", dsn)
+		db, err := sql.Open("mysql", "root:admin123@tcp(127.0.0.1:3306)/test?multiStatements=true")
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Cannot open DB: %v", err)})
 			return
 		}
+		defer db.Close()
+
+		// Make sure connection works
+		if err := db.Ping(); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Cannot ping DB: %v", err)})
+			return
+		}
+
 		res, err := db.Query(dbstr)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot fetch from db"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Query failed: %v", err)})
+			return
 		}
-		defer db.Close()
+		defer res.Close()
+
 		type output struct {
 			SName     string `json:"studentName"`
 			SSection  string `json:"section"`
@@ -196,6 +208,7 @@ func DisplaySubject(ctx *gin.Context) {
 		res, err := db.Query(dbstr)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot fetch from db"})
+			return
 		}
 		defer db.Close()
 		type output struct {

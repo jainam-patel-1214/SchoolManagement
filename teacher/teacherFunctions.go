@@ -230,7 +230,7 @@ func EditStud(ctx *gin.Context) {
 				return
 			}
 		} else {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "pls provide new vals to update"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "pls provide new vals to update"})
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"output": "student updated successfully"})
@@ -295,7 +295,7 @@ func CreateSub(ctx *gin.Context) {
 			return
 		}
 		if err == sql.ErrNoRows {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("first set limit of subjects allocated in %d standard", subInfo.LevelStd)})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("first set limit of subjects allocated in %d standard", subInfo.LevelStd)})
 			return
 		}
 		var count int
@@ -359,21 +359,17 @@ func EditSub(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject doesnot exist with id provided, try creating subject details"})
 			return
 		}
-		if editBody.SubName != "" || len(editBody.SubName) > 50 {
+		if editBody.SubName != "" && len(editBody.SubName) > 50 {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject name, pls provide name upto 50 chars"})
 			return
 		}
-		if editBody.LevelStd != 0 {
-			if editBody.LevelStd < 0 || editBody.LevelStd > 12 {
-				ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standard from 1 to 12 are valid"})
-				return
-			}
+		if editBody.LevelStd != 0 && (editBody.LevelStd < 0 || editBody.LevelStd > 12) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standard from 1 to 12 are valid"})
+			return
 		}
-		if editBody.Credits != 0 {
-			if editBody.Credits < 0 {
-				ctx.JSON(http.StatusBadRequest, gin.H{"error": "negative credits are not possible"})
-				return
-			}
+		if editBody.Credits != 0 && editBody.Credits < 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "negative credits are not possible"})
+			return
 		}
 
 		var defaultData EditBody
@@ -406,7 +402,7 @@ func EditSub(ctx *gin.Context) {
 				dbstr += ","
 			}
 		}
-		dbstr += ("WHERE subId = " + strconv.Itoa(editBody.SubId))
+		dbstr += (" WHERE subId = " + strconv.Itoa(editBody.SubId))
 
 		_, err = db.Exec(dbstr)
 		if err != nil {
@@ -468,7 +464,7 @@ func EnterMarks(ctx *gin.Context) {
 			return
 		}
 		if amountstud <= 0 {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "student not exist whom you want to add marks"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "student not exist whom you want to add marks"})
 			return
 		}
 		var amountsub int
@@ -478,7 +474,7 @@ func EnterMarks(ctx *gin.Context) {
 			return
 		}
 		if amountsub <= 0 {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject not exist whom you want to add marks"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject not exist whom you want to add marks"})
 			return
 		}
 		var amount int
@@ -557,7 +553,7 @@ func EditMarks(ctx *gin.Context) {
 			return
 		}
 		if amountstud <= 0 {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "student not exist whom you want to add marks"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "student not exist whom you want to edit marks"})
 			return
 		}
 		var amountsub int
@@ -567,7 +563,7 @@ func EditMarks(ctx *gin.Context) {
 			return
 		}
 		if amountsub <= 0 {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject not exist whom you want to add marks"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject not exist whom you want to edit marks"})
 			return
 		}
 		var amount int
@@ -589,11 +585,11 @@ func EditMarks(ctx *gin.Context) {
 		dbstr := "UPDATE marks SET "
 		changeOccur := false
 		var conditions []string
-		if editBody.TheoryMarks != defaultData.TheoryMarks && editBody.TheoryMarks <= 80 && editBody.TheoryMarks >= 0 {
+		if editBody.TheoryMarks != defaultData.TheoryMarks && editBody.TheoryMarks <= 80 && editBody.TheoryMarks > 0 {
 			conditions = append(conditions, ("theoryM = " + strconv.Itoa(editBody.TheoryMarks)))
 			changeOccur = true
 		}
-		if editBody.PracticalMarks != defaultData.PracticalMarks && editBody.PracticalMarks <= 20 && editBody.PracticalMarks >= 0 {
+		if editBody.PracticalMarks != defaultData.PracticalMarks && editBody.PracticalMarks <= 20 && editBody.PracticalMarks > 0 {
 			conditions = append(conditions, ("practicalM = " + strconv.Itoa(editBody.PracticalMarks)))
 			changeOccur = true
 		}
@@ -664,7 +660,7 @@ func AddReviews(ctx *gin.Context) {
 		return
 	}
 	if amount <= 0 {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "no such student found"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "no such student found"})
 		return
 	}
 	var amt int
@@ -714,14 +710,14 @@ func Performance(ctx *gin.Context) {
 	res := db.QueryRow("SELECT subId,stdAllocated FROM teachers WHERE tId = ?", tid)
 	var std int
 	var stda int
-	if err = res.Scan(&std, &stda); err != nil && err != sql.ErrNoRows {
+	if err = res.Scan(&std, &stda); std == 0 || stda == 0 {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "subject/std is not allocated to teacher whose performance you requested. thus no performance can be fetched"})
+		return
+	} else if err != nil && err != sql.ErrNoRows {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
 		return
-	} else if std == 0 || stda == 0 {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject/std is not allocated to teacher whose performance you requested. thus no performance can be fetched"})
-		return
 	} else if err == sql.ErrNoRows {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject/std is not allocated to teacher whose performance you requested. thus no performance can be fetched"})
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "subject/std is not allocated to teacher whose performance you requested. thus no performance can be fetched"})
 		return
 	}
 
@@ -734,7 +730,7 @@ func Performance(ctx *gin.Context) {
 		TotalPracticalMarks int
 	}
 	var result []Teachers
-	res2, err := db.Query("SELECT tId FROM teachers WHERE stdAllocated=? AND subId IS NOT NULL", std)
+	res2, err := db.Query("SELECT tId FROM teachers WHERE stdAllocated=? AND subId IS NOT NULL", stda)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong hwile fetching db"})
 		return
