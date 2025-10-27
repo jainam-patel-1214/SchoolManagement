@@ -340,6 +340,7 @@ func AddStudent(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		fmt.Println(studentData)
 		if studentData.GR_NO == 0 {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid gr no provided"})
 			return
@@ -753,7 +754,7 @@ func EnterMarks(ctx *gin.Context) {
 			return
 		}
 		if amountstud <= 0 {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "student not exist whom you want to add marks"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "student not exist whom you want to add marks"})
 			return
 		}
 		var amountsub int
@@ -763,7 +764,7 @@ func EnterMarks(ctx *gin.Context) {
 			return
 		}
 		if amountsub <= 0 {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject not exist whom you want to add marks"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject not exist whom you want to add marks"})
 			return
 		}
 		var amount int
@@ -773,7 +774,7 @@ func EnterMarks(ctx *gin.Context) {
 			return
 		}
 		if amount > 0 {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "record already present please try updating it"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "record already present please try updating it"})
 			return
 		}
 		if _, err = db.Exec("INSERT INTO marks (grNo,subId,theoryM,practicalM,grade) VALUES (?,?,?,?,?)", marks.GrNo, marks.SubId, marks.TheoryMarks, marks.PracticalMarks, gradeCalculator(marks.TheoryMarks+marks.PracticalMarks)); err != nil {
@@ -843,7 +844,7 @@ func EditMarks(ctx *gin.Context) {
 			return
 		}
 		if amountstud <= 0 {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "student not exist whom you want to edit marks"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "student not exist whom you want to edit marks"})
 			return
 		}
 		var amountsub int
@@ -853,7 +854,7 @@ func EditMarks(ctx *gin.Context) {
 			return
 		}
 		if amountsub <= 0 {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject not exist whom you want to rdit marks"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject not exist whom you want to rdit marks"})
 			return
 		}
 		var amount int
@@ -863,7 +864,7 @@ func EditMarks(ctx *gin.Context) {
 			return
 		}
 		if amount <= 0 {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "record already present please try creating it"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "record not present please try creating it"})
 			return
 		}
 		var defaultData marks
@@ -953,15 +954,15 @@ func Performance(ctx *gin.Context) {
 			return
 		}
 		var teachFlag int
-		if err = db.QueryRow("SELECT subId FROM teachers WHERE tId=?", TeacherId.Tid).Scan(&teachFlag); err != nil && err != sql.ErrNoRows {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if err = db.QueryRow("SELECT subId FROM teachers WHERE tId=?", TeacherId.Tid).Scan(&teachFlag); teachFlag == 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "teacher id you provided doesnt take any subject, so no performance can be evaluated"})
 			return
 		} else if err == sql.ErrNoRows {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "teacher id you provided doesnt take any subject, so no performance can be evaluated"})
 			return
 		}
-		if teachFlag == 0 {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "teacher id you provided doesnt take any subject, so no performance can be evaluated"})
+		if err != nil && err != sql.ErrNoRows {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 	} else {
@@ -975,7 +976,7 @@ func Performance(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
 		return
 	} else if std == 0 || stda == 0 {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject/standard is not allocated to teacher whose performance you requested. thus no performance can be fetched"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "subject/standard is not allocated to teacher whose performance you requested. thus no performance can be fetched"})
 		return
 	} else if err == sql.ErrNoRows {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "subject/standard is not allocated to teacher whose performance you requested. thus no performance can be fetched"})
