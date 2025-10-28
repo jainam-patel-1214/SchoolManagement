@@ -618,7 +618,7 @@ func EditMarks(ctx *gin.Context) {
 			ctx.JSON(http.StatusOK, gin.H{"output": "student updated successfully"})
 			return
 		} else {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "no changes specified"})
+			ctx.JSON(http.StatusOK, gin.H{"error": "no changes specified"})
 			return
 		}
 	} else {
@@ -664,7 +664,7 @@ func AddReviews(ctx *gin.Context) {
 		return
 	}
 	var amt int
-	err = db.QueryRow("SELECT COUNT(grNo) FROM reviews WHERE grNo = ?", reviewInfo.StudId).Scan(&amt)
+	err = db.QueryRow("SELECT COUNT(grNo) FROM reviews WHERE grNo = ? AND tId = ?", reviewInfo.StudId, tid.(string)).Scan(&amt)
 	if err != nil && err != sql.ErrNoRows {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -991,7 +991,7 @@ func Performance(ctx *gin.Context) {
 		TotalPracticalMarks int
 	}
 	var result []Teachers
-	res2, err := db.Query("SELECT tId FROM teachers WHERE stdAllocated=? AND subId IS NOT NULL", std)
+	res2, err := db.Query("SELECT tId FROM teachers WHERE stdAllocated=? AND subId IS NOT NULL", stda)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong hwile fetching db"})
 		return

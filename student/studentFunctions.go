@@ -62,8 +62,7 @@ func DisplayStudents(ctx *gin.Context) {
 		fmt.Println("no token found")
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
 		return
-	}
-	if role == "student" {
+	} else if role == "student" {
 		var constraints DisplayConditions
 		if err := ctx.BindJSON(&constraints); err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -168,10 +167,7 @@ func DisplayStudents(ctx *gin.Context) {
 		}
 		ctx.JSON(http.StatusOK, gin.H{"result": queryres})
 		return
-	} else {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
 	}
-	fmt.Println("trying debug")
 }
 
 func DisplaySubject(ctx *gin.Context) {
@@ -189,11 +185,7 @@ func DisplaySubject(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
 			return
 		}
-		if constraints.Std == 0 {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "please enter valid input"})
-			return
-		}
-		if constraints.Std > 12 || constraints.Std < 0 {
+		if constraints.Std > 12 || constraints.Std <= 0 {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standards ranging from 1 to 12 are available"})
 			return
 		}
@@ -230,10 +222,6 @@ func DisplaySubject(ctx *gin.Context) {
 			ctx.JSON(http.StatusOK, gin.H{"result": "no subjects found"})
 			return
 		}
-		if len(queryres) == 0 {
-			ctx.JSON(http.StatusOK, gin.H{"output": "no result found"})
-			return
-		}
 		ctx.JSON(http.StatusOK, gin.H{"result": queryres})
 		return
 	} else {
@@ -267,7 +255,7 @@ func Report(ctx *gin.Context) {
 		defer db.Close()
 
 		searchParam, exist := ctx.Get("UiD")
-		if !exist {
+		if !exist || searchParam == 0 {
 			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "id not found"})
 			return
 		}
@@ -314,7 +302,7 @@ func Report(ctx *gin.Context) {
 		}
 		for res2.Next() {
 			var tp Comments
-			err = res1.Scan(&tp.TeacherId, &tp.TeacherName, &tp.Comment)
+			err = res2.Scan(&tp.TeacherId, &tp.TeacherName, &tp.Comment)
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cant process query output"})
 				return

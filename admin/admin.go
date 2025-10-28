@@ -396,8 +396,7 @@ func DeleteTeacher(ctx *gin.Context) {
 	if !exist || role != "admin" {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
 		return
-	}
-	if role == "admin" {
+	} else if role == "admin" {
 		var tid struct {
 			TId string `json:"teacherId" binding:"required"`
 		}
@@ -434,9 +433,6 @@ func DeleteTeacher(ctx *gin.Context) {
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"output": "DELETED SUCCESSFULLY"})
-	} else {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
-		return
 	}
 }
 
@@ -488,8 +484,6 @@ func RejectRequest(ctx *gin.Context) {
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"output": "rejected successfully"})
-	} else {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
 	}
 }
 func AddTeacher(ctx *gin.Context) {
@@ -497,8 +491,7 @@ func AddTeacher(ctx *gin.Context) {
 	if !exist || role != "admin" {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
 		return
-	}
-	if role == "admin" {
+	} else if role == "admin" {
 		var tdata struct {
 			TId              string `json:"teacherId" binding:"required"`
 			Tpwd             string `json:"tPwd" binding:"required"`
@@ -553,7 +546,7 @@ func AddTeacher(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "too long name provided"})
 			return
 		}
-		if tdata.SubAllocated != 0 && tdata.SubAllocated < 0 && tdata.SubAllocated > 99999999 {
+		if tdata.SubAllocated != 0 && (tdata.SubAllocated < 0 || tdata.SubAllocated > 99999999) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid subject it provided"})
 			return
 		}
@@ -593,9 +586,6 @@ func AddTeacher(ctx *gin.Context) {
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"output": "ADDED SUCCESSFULLY"})
-	} else {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
-		return
 	}
 }
 

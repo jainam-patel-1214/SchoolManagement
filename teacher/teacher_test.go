@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	// "example.com/main/student"
 	"github.com/gin-gonic/gin"
 )
 
@@ -67,7 +68,7 @@ import (
 // 		},
 // 		{
 // 			name:         "Valid case",
-// 			reqbody:      `{"grNo":13,"studPwd":"Asdf123@","userRole":"student","studName":"raj","std":5,"section":"A"}`,
+// 			reqbody:      `{"grNo":1313,"studPwd":"Asdf1234","userRole":"student","studName":"jainam","std":5,"section":"A"}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusOK,
 // 		},
@@ -109,31 +110,31 @@ import (
 // 		},
 // 		{
 // 			name:         "Invalid section",
-// 			reqbody:      `{"grNo":13,"section":"A1"}`,
+// 			reqbody:      `{"grNo":1313,"section":"A1"}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "Invalid std",
-// 			reqbody:      `{"grNo":13,"std":15}`,
+// 			reqbody:      `{"grNo":1313,"std":15}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "Invalid pwd",
-// 			reqbody:      `{"grNo":13,"studPwd":"Asd"}`,
+// 			reqbody:      `{"grNo":1313,"studPwd":"Asd"}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "Invalid student name",
-// 			reqbody:      `{"grNo":13,"studName":"raj6"}`,
+// 			reqbody:      `{"grNo":1313,"studName":"raj6"}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "student doesnot exists",
-// 			reqbody:      `{"grNo":10,"studPwd":"Asdf123@"}`,
+// 			reqbody:      `{"grNo":1000,"studPwd":"Asdf123@"}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
@@ -144,14 +145,20 @@ import (
 // 			expectedCode: http.StatusUnauthorized,
 // 		},
 // 		{
-// 			name:         "old and new value same",
-// 			reqbody:      `{"grNo":13"studName":"raj"}`,
+// 			name:         "old and new name same",
+// 			reqbody:      `{"grNo":1313",studName":"jainam"}`,
+// 			usrrole:      "teacher",
+// 			expectedCode: http.StatusBadRequest,
+// 		},
+// 		{
+// 			name:         "old and new pwd same",
+// 			reqbody:      `{"grNo":1313","studPwd":"Asdf1234"}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "Valid case",
-// 			reqbody:      `{"grNo":13,"studName":"ram"}`,
+// 			reqbody:      `{"grNo":1313,"studName":"jainam patel"}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusOK,
 // 		},
@@ -193,39 +200,45 @@ import (
 // 		},
 // 		{
 // 			name:         "Invalid std",
-// 			reqbody:      `{"subId":1399999999,"subName":"math","levelStd":15,"credits":5}`,
+// 			reqbody:      `{"subId":999,"subName":"math","levelStd":15,"credits":5}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "Invalid credits",
-// 			reqbody:      `{"subId":1399999999,"subName":"math","levelStd":5,"credits":-5}`,
+// 			reqbody:      `{"subId":999,"subName":"math","levelStd":5,"credits":-5}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "Invalid name",
-// 			reqbody:      `{"subId":9999,"subName":"mathffskbdibcisdhcksbckdsbcsdbcisdbcisdicvsdicbidscibdsicbicbidbcidbiddsckbbsvvsuvsvsbuksabdsyuc","levelStd":5,"credits":5}`,
+// 			reqbody:      `{"subId":999,"subName":"mathffskbdibcisdhcksbckdsbcsdbcisdbcisdicvsdicbidscibdsicbicbidbcidbiddsckbbsvvsuvsvsbuksabdsyuc","levelStd":5,"credits":5}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "unset subject limit",
-// 			reqbody:      `{"subId":9999,"subName":"maths 2","levelStd":12,"credits":5}`,
+// 			reqbody:      `{"subId":999,"subName":"maths 2","levelStd":12,"credits":5}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "authorization fail",
-// 			reqbody:      `{"subId":9999,"subName":"maths 2","levelStd":12,"credits":5}`,
+// 			reqbody:      `{"subId":999,"subName":"maths 2","levelStd":12,"credits":5}`,
 // 			usrrole:      "teacherzz",
 // 			expectedCode: http.StatusUnauthorized,
 // 		},
 // 		{
 // 			name:         "Valid case",
-// 			reqbody:      `{"subId":9999,"subName":"maths 2","levelStd":1,"credits":5}`,
+// 			reqbody:      `{"subId":999,"subName":"geography","levelStd":11,"credits":4}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusOK,
+// 		},
+// 		{
+// 			name:         "subject id already exist",
+// 			reqbody:      `{"subId":9999,"subName":"maths 2","levelStd":1,"credits":5}`,
+// 			usrrole:      "teacher",
+// 			expectedCode: http.StatusBadRequest,
 // 		},
 // 	}
 
@@ -265,37 +278,37 @@ import (
 // 		},
 // 		{
 // 			name:         "Invalid std",
-// 			reqbody:      `{"subId":9999,"levelStd":15}`,
+// 			reqbody:      `{"subId":999,"levelStd":15}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "Invalid credits",
-// 			reqbody:      `{"subId":9999,"credits":-5}`,
+// 			reqbody:      `{"subId":999,"credits":-5}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "Invalid name",
-// 			reqbody:      `{"subId":9999,"subName":"mathffskbdibcisdhcksbckdsbcsdbcisdbcisdicvsdicbidscibdsicbicbidbcidbiddsckbbsvvsuvsvsbuksabdsyuc"}`,
+// 			reqbody:      `{"subId":999,"subName":"mathffskbdibcisdhcksbckdsbcsdbcisdbcisdicvsdicbidscibdsicbicbidbcidbiddsckbbsvvsuvsvsbuksabdsyuc"}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "subject doesnt exist",
-// 			reqbody:      `{"subId":1010,"subName":"maths 2"}`,
+// 			reqbody:      `{"subId":10100,"subName":"maths 2"}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "authorization fail",
-// 			reqbody:      `{"subId":9999,"subName":"maths 2","levelStd":12,"credits":5}`,
+// 			reqbody:      `{"subId":999,"subName":"maths 2","levelStd":12,"credits":5}`,
 // 			usrrole:      "teacherzz",
 // 			expectedCode: http.StatusUnauthorized,
 // 		},
 // 		{
 // 			name:         "Valid case",
-// 			reqbody:      `{"subId":9999,"subName":"maths 3"}`,
+// 			reqbody:      `{"subId":999,"subName":"history"}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusOK,
 // 		},
@@ -330,8 +343,8 @@ import (
 // 		expectedCode int
 // 	}{
 // 		{
-// 			name:         "Invalid syd",
-// 			reqbody:      `{"std":999999990}`,
+// 			name:         "Invalid std",
+// 			reqbody:      `{"std":99}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
@@ -384,26 +397,38 @@ import (
 // 		expectedCode int
 // 	}{
 // 		{
+// 			name:         "invalid gr",
+// 			reqbody:      `{"subId":10,"grNo":1414141414,"theoryMarks":80,"practicalMarks":15}`,
+// 			usrrole:      "teacher",
+// 			expectedCode: http.StatusBadRequest,
+// 		},
+// 		{
+// 			name:         "invalid subid",
+// 			reqbody:      `{"subId":1098765432,"grNo":14,"theoryMarks":80,"practicalMarks":15}`,
+// 			usrrole:      "teacher",
+// 			expectedCode: http.StatusBadRequest,
+// 		},
+// 		{
 // 			name:         "Invalid theory marks",
-// 			reqbody:      `{"subId":11,"grNo":13,"theoryMarks":88,"practicalMarks":15}`,
+// 			reqbody:      `{"subId":999,"grNo":13,"theoryMarks":88,"practicalMarks":15}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "Invalid practical marks",
-// 			reqbody:      `{"subId":11,"grNo":13,"theoryMarks":80,"practicalMarks":-15}`,
+// 			reqbody:      `{"subId":999,"grNo":13,"theoryMarks":80,"practicalMarks":-15}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "student not found",
-// 			reqbody:      `{"subId":11,"grNo":1313,"theoryMarks":80,"practicalMarks":15}`,
+// 			reqbody:      `{"subId":11,"grNo":131,"theoryMarks":80,"practicalMarks":15}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "subject not found",
-// 			reqbody:      `{"subId":1111,"grNo":13,"theoryMarks":80,"practicalMarks":15}`,
+// 			reqbody:      `{"subId":1110,"grNo":13,"theoryMarks":80,"practicalMarks":15}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
@@ -415,13 +440,13 @@ import (
 // 		},
 // 		{
 // 			name:         "Valid case",
-// 			reqbody:      `{"subId":10,"grNo":13,"theoryMarks":80,"practicalMarks":15}`,
+// 			reqbody:      `{"subId":999,"grNo":14,"theoryMarks":80,"practicalMarks":15}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusOK,
 // 		},
 // 		{
 // 			name:         "record already present",
-// 			reqbody:      `{"subId":10,"grNo":13,"theoryMarks":80,"practicalMarks":15}`,
+// 			reqbody:      `{"subId":10,"grNo":1,"theoryMarks":80,"practicalMarks":15}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusInternalServerError,
 // 		},
@@ -456,44 +481,50 @@ import (
 // 		expectedCode int
 // 	}{
 // 		{
+// 			name:         "invalid gr",
+// 			reqbody:      `{"subId":10,"grNo":1414141414,"theoryMarks":80,"practicalMarks":15}`,
+// 			usrrole:      "teacher",
+// 			expectedCode: http.StatusBadRequest,
+// 		},
+// 		{
+// 			name:         "invalid subid",
+// 			reqbody:      `{"subId":1098765432,"grNo":14,"theoryMarks":80,"practicalMarks":15}`,
+// 			usrrole:      "teacher",
+// 			expectedCode: http.StatusBadRequest,
+// 		},
+// 		{
 // 			name:         "Invalid theory marks",
-// 			reqbody:      `{"subId":11,"grNo":13,"theoryMarks":-88}`,
+// 			reqbody:      `{"subId":999,"grNo":14,"theoryMarks":-88}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "Invalid practical marks",
-// 			reqbody:      `{"subId":11,"grNo":13,"practicalMarks":-15}`,
-// 			usrrole:      "teacher",
-// 			expectedCode: http.StatusBadRequest,
-// 		},
-// 		{
-// 			name:         "student not found",
-// 			reqbody:      `{"subId":10,"grNo":1313,"theoryMarks":70}`,
-// 			usrrole:      "teacher",
-// 			expectedCode: http.StatusBadRequest,
-// 		},
-// 		{
-// 			name:         "subject not found",
-// 			reqbody:      `{"subId":1111,"grNo":13,"practicalMarks":13}`,
+// 			reqbody:      `{"subId":999,"grNo":14,"practicalMarks":-15}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
 // 		{
 // 			name:         "authorization fail",
-// 			reqbody:      `{"subId":11,"grNo":13,"theoryMarks":80,"practicalMarks":15}`,
+// 			reqbody:      `{"subId":999,"grNo":13,"theoryMarks":80,"practicalMarks":15}`,
 // 			usrrole:      "teacherzz",
 // 			expectedCode: http.StatusUnauthorized,
 // 		},
 // 		{
+// 			name:         "no changes",
+// 			reqbody:      `{"subId":999,"grNo":14,"theoryMarks":80,"practicalMarks":15}`,
+// 			usrrole:      "teacher",
+// 			expectedCode: http.StatusOK,
+// 		},
+// 		{
 // 			name:         "Valid case",
-// 			reqbody:      `{"subId":10,"grNo":13,"theoryMarks":50}`,
+// 			reqbody:      `{"subId":999,"grNo":14,"theoryMarks":50}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusOK,
 // 		},
 // 		{
 // 			name:         "record not found to edit",
-// 			reqbody:      `{"subId":10,"grNo":1,"theoryMarks":80,"practicalMarks":15}`,
+// 			reqbody:      `{"subId":10,"grNo":1212,"theoryMarks":80,"practicalMarks":15}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusInternalServerError,
 // 		},
@@ -535,7 +566,7 @@ import (
 // 		},
 // 		{
 // 			name:         "student not found valid gr no",
-// 			reqbody:      `{"grNo":15}`,
+// 			reqbody:      `{"grNo":159}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
@@ -547,7 +578,7 @@ import (
 // 		},
 // 		{
 // 			name:         "Valid case",
-// 			reqbody:      `{"grNo":13}`,
+// 			reqbody:      `{"grNo":14}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusOK,
 // 		},
@@ -589,7 +620,7 @@ import (
 // 		},
 // 		{
 // 			name:         "subject not found",
-// 			reqbody:      `{"subId":111}`,
+// 			reqbody:      `{"subId":1118}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusBadRequest,
 // 		},
@@ -601,7 +632,7 @@ import (
 // 		},
 // 		{
 // 			name:         "Valid case",
-// 			reqbody:      `{"subId":11}`,
+// 			reqbody:      `{"subId":999}`,
 // 			usrrole:      "teacher",
 // 			expectedCode: http.StatusOK,
 // 		},
@@ -645,7 +676,7 @@ import (
 // 		},
 // 		{
 // 			name:         "valid but student not found",
-// 			reqbody:      `{"grNo":19,"comment":"sincere"}`,
+// 			reqbody:      `{"grNo":190,"comment":"sincere"}`,
 // 			usrrole:      "teacher",
 // 			usrid:        "t1",
 // 			expectedCode: http.StatusBadRequest,
@@ -659,16 +690,29 @@ import (
 // 		},
 // 		{
 // 			name:         "Valid case",
-// 			reqbody:      `{"grNo":13,"comment":"sincere"}`,
+// 			reqbody:      `{"grNo":1,"comment":"sincere"}`,
 // 			usrrole:      "teacher",
 // 			usrid:        "t1",
 // 			expectedCode: http.StatusOK,
 // 		},
 // 		{
 // 			name:         "Valid case but review already present",
-// 			reqbody:      `{"grNo":13,"comment":"sincere"}`,
+// 			reqbody:      `{"grNo":1,"comment":"sincere"}`,
 // 			usrrole:      "teacher",
 // 			usrid:        "t1",
+// 			expectedCode: http.StatusInternalServerError,
+// 		},
+// 		{
+// 			name:         "too long comment",
+// 			reqbody:      `{"grNo":1212,"comment":"sinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresisinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresinceresincerenceresinceresinceresinceresincere"}`,
+// 			usrrole:      "teacher",
+// 			usrid:        "t1",
+// 			expectedCode: http.StatusBadRequest,
+// 		},
+// 		{
+// 			name:         "tid not set",
+// 			reqbody:      `{"grNo":1212,"comment":"sincere"}`,
+// 			usrrole:      "teacher",
 // 			expectedCode: http.StatusInternalServerError,
 // 		},
 // 	}
@@ -760,13 +804,13 @@ func TestStudentReportByTeacher(t *testing.T) {
 		{
 			name:         "valid but no student found",
 			usrrole:      "teacher",
-			reqbody:      `{"grNo":15}`,
+			reqbody:      `{"grNo":150}`,
 			expectedCode: http.StatusInternalServerError,
 		},
 		{
 			name:         "valid but no result found",
 			usrrole:      "teacher",
-			reqbody:      `{"grNo":13}`,
+			reqbody:      `{"grNo":12121}`,
 			expectedCode: http.StatusOK,
 		},
 		{
