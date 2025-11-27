@@ -10,10 +10,11 @@ import (
 
 func InitializeRouter() *gin.Engine {
 	r := gin.Default()
-
+	r.Use(middleware.CORSMiddleware())
 	// CreateSession is not actually a middleware but validate session is
 	r.POST("/login", middleware.CreateSession)
 	r.POST("/register", admin.CreatePendingReq)
+	r.DELETE("/deleteCookieFromDB", middleware.DelCookie)
 	{
 		stud := r.Group("/student")
 		stud.Use(middleware.ValidateSession())
@@ -21,24 +22,32 @@ func InitializeRouter() *gin.Engine {
 			stud.GET("/display", student.DisplayStudents)
 			stud.GET("/displaySub", student.DisplaySubject)
 			stud.GET("/report", student.Report)
+			stud.GET("/data", student.SelfData)
 		}
 	}
 	{
 		teach := r.Group("/teacher")
 		teach.Use(middleware.ValidateSession())
 		{
-			teach.GET("/studentreport", teacher.Report)
+			teach.GET("/data", teacher.SelfData)
+
 			teach.GET("/displayPerformance", teacher.Performance)
+
+			teach.GET("/studentreport", teacher.Report)
+			teach.GET("/displayStud", admin.ListStudents)
 			teach.POST("/createStud", teacher.AddStudent)
 			teach.PUT("/updateStud", teacher.EditStud)
-			teach.POST("/createSub", teacher.CreateSub)
+			teach.DELETE("/delStudent", teacher.DelStud)
+
 			teach.PUT("/updateSub", teacher.EditSub)
 			teach.POST("/enterMarks", teacher.EnterMarks)
+
+			teach.POST("/createSub", teacher.CreateSub)
 			teach.PUT("/updateMarks", teacher.EditMarks)
 			teach.GET("/displaySub", student.DisplaySubject)
-			teach.POST("/addReview", teacher.AddReviews)
-			teach.DELETE("/delStudent", teacher.DelStud)
 			teach.DELETE("/delSubject", teacher.DelSub)
+
+			teach.POST("/addReview", teacher.AddReviews)
 		}
 	}
 	{
@@ -48,23 +57,27 @@ func InitializeRouter() *gin.Engine {
 			admn.GET("/pendingRequest", admin.ShowPendingReq)
 			admn.POST("/acceptRequest", admin.AcceptPendingReq)
 			admn.DELETE("/rejectRequest", admin.RejectRequest)
+			admn.GET("/data", admin.SelfData)
+
 			admn.DELETE("/delTeacher", admin.DeleteTeacher)
 			admn.POST("/addTeacher", admin.AddTeacher)
 			admn.PUT("/editTeacher", admin.EditTeacher)
+			admn.GET("/displayTeacherPerformance/:tid", admin.Performance)
 
-			admn.GET("/display", admin.DisplayStudents)
-			admn.GET("/displaySub", admin.DisplaySubject)
 			admn.GET("/studentreport", admin.Report)
-
-			admn.GET("/displayTeacherPerformance", admin.Performance)
 			admn.POST("/createStud", admin.AddStudent)
+			admn.GET("/displayStud", admin.ListStudents)
 			admn.PUT("/updateStud", admin.EditStud)
+			admn.DELETE("/delStudent", admin.DelStud)
+
+			admn.GET("/displaySub", student.DisplaySubject)
 			admn.POST("/createSub", admin.CreateSub)
 			admn.PUT("/updateSub", admin.EditSub)
+			admn.DELETE("/delSubject", admin.DelSub)
+
 			admn.POST("/enterMarks", admin.EnterMarks)
 			admn.PUT("/updateMarks", admin.EditMarks)
-			admn.DELETE("/delStudent", admin.DelStud)
-			admn.DELETE("/delSubject", admin.DelSub)
+
 			admn.POST("/setSubLimit", admin.SetSubLimit)
 		}
 	}

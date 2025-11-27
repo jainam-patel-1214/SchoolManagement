@@ -51,7 +51,7 @@
 - JSON TAGS - (std)
 
 ```
-- curl -X GET <http://localhost:8090/student/display> \
+- curl -X GET <http://localhost:8090/student/displaySub> \
      -H "Content-Type: application/json" \
      -b "userCookie=string.string.string" \
      -d '{"std": from 1 to 12}' 

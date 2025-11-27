@@ -62,12 +62,37 @@ func DisplayStudents(ctx *gin.Context) {
 		fmt.Println("no token found")
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
 		return
-	} else if role == "student" {
+	} else {
+		// if err := ctx.ShouldBindJSON(&constraints); err != nil {
+
+		// }
+		// errBool := false
+		// if err != nil {
+		// 	errBool = true
+		// }
+		// if err != nil {
+		// 	errBool = true
+		// }
+		// if err != nil {
+		// 	errBool = true
+		// }
+
+		// if errBool {
+		// 	ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid params sent"})
+		// 	return
+		// }
+		// var err error
 		var constraints DisplayConditions
-		if err := ctx.BindJSON(&constraints); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+		fmt.Println(constraints, "constraintssss1")
+		if ctx.Query("viewBySection") == "null" {
+			fmt.Println("jugadddd")
 		}
+		constraints.MaxPercent, _ = strconv.Atoi(ctx.Query("maxPercent"))
+		constraints.MinPercent, _ = strconv.Atoi(ctx.Query("minPercent"))
+		constraints.ViewBySection = ctx.Query("viewBySection")
+
+		fmt.Println(constraints, "constraintssss2", "---------", ctx.Query("viewBySection"))
+		constraints.ViewByStd, _ = strconv.Atoi(ctx.Query("viewByStd"))
 		if constraints.MaxPercent > 100 || constraints.MaxPercent < 0 {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "max percent shall be within range of 0 and 100"})
 			return
@@ -165,44 +190,54 @@ func DisplayStudents(ctx *gin.Context) {
 			ctx.JSON(http.StatusOK, gin.H{"output": "no result found"})
 			return
 		}
-		ctx.JSON(http.StatusOK, gin.H{"result": queryres})
+		ctx.JSON(http.StatusOK, gin.H{"output": queryres})
 		return
 	}
 }
 
 func DisplaySubject(ctx *gin.Context) {
 	role, exist := ctx.Get("userrole")
-	if !exist || (role != "student" && role != "teacher") {
+	if !exist || (role != "student" && role != "teacher" && role != "admin") {
 		fmt.Println("no token found")
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
 		return
 	}
-	if role == "student" || role == "teacher" {
-		var constraints struct {
-			Std int `json:"std" binding:"required"`
+	if role == "student" || role == "teacher" || role == "admin" {
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
+			return
 		}
-		if err := ctx.BindJSON(&constraints); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
+		defer db.Close()
+		var constraints struct {
+			Std int
+		}
+		constraints.Std, err = strconv.Atoi(ctx.Query("std"))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "inappropriate query value"})
 			return
 		}
 		if constraints.Std > 12 || constraints.Std <= 0 {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "only standards ranging from 1 to 12 are available"})
 			return
 		}
+		var amt int
+		if err := db.QueryRow("SELECT COUNT(std) FROM subjectAllocation WHERE std=?", constraints.Std).Scan(&amt); err != nil && err != sql.ErrNoRows {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if amt <= 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "no limit have been set for this std thus there are no subjects"})
+			return
+		}
 		dbstr := "SELECT * FROM subjects WHERE levelStd = " + strconv.Itoa(constraints.Std)
 		fmt.Println(dbstr)
 
-		db, err := sql.Open("mysql", dsn)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "CANNOT CONNECT TO DB"})
-			return
-		}
 		res, err := db.Query(dbstr)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot fetch from db"})
 			return
 		}
-		defer db.Close()
 		type output struct {
 			SubId   int    `json:"subjectId"`
 			SubName string `json:"subjectName"`
@@ -219,10 +254,10 @@ func DisplaySubject(ctx *gin.Context) {
 			queryres = append(queryres, record)
 		}
 		if len(queryres) == 0 {
-			ctx.JSON(http.StatusOK, gin.H{"result": "no subjects found"})
+			ctx.JSON(http.StatusOK, gin.H{"output": "no subjects found"})
 			return
 		}
-		ctx.JSON(http.StatusOK, gin.H{"result": queryres})
+		ctx.JSON(http.StatusOK, gin.H{"output": queryres})
 		return
 	} else {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized access"})
@@ -314,5 +349,68 @@ func Report(ctx *gin.Context) {
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"output": otpt})
+	}
+}
+
+func SelfData(ctx *gin.Context) {
+	role, exist := ctx.Get("userrole")
+	if !exist || role != "student" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthirused access"})
+		return
+	} else {
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cant connect to db"})
+			return
+		}
+		defer db.Close()
+
+		searchParam, exist := ctx.Get("UiD")
+		if !exist || searchParam == 0 {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "id not found"})
+			return
+		}
+		temp := fmt.Sprintf("%v", searchParam)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// 	return
+		// }
+		type SubjectData struct {
+			Subid   int
+			Subname string
+			Credit  int
+		}
+		var otpt struct {
+			Std      int
+			Section  string
+			Password string
+			SubList  []SubjectData
+		}
+		err = db.QueryRow("SELECT s.std,s.section,s.sPwd FROM students s WHERE s.grNo=?", temp).Scan(&otpt.Std, &otpt.Section, &otpt.Password)
+		if err != nil && err != sql.ErrNoRows {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		res2, err := db.Query("SELECT subId,subName,credits FROM subjects WHERE levelStd = ?", otpt.Std)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "error processing query"})
+			return
+		}
+		var allSubDta []SubjectData
+		for res2.Next() {
+			var tp SubjectData
+			err = res2.Scan(&tp.Subid, &tp.Subname, &tp.Credit)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cant process query output"})
+				return
+			}
+			allSubDta = append(allSubDta, tp)
+		}
+		if len(allSubDta) > 0 {
+			otpt.SubList = allSubDta
+		}
+		fmt.Println("PPPPL", otpt)
+		ctx.JSON(http.StatusOK, gin.H{"output": otpt})
+
 	}
 }

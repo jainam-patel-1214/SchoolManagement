@@ -47,7 +47,7 @@ func CreateSession(ctx *gin.Context) {
 	}
 	claim := &JwtClaims{}
 	idExist := false
-	if err := ctx.Bind(&credentials); err != nil {
+	if err := ctx.ShouldBindJSON(&credentials); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
@@ -70,19 +70,20 @@ func CreateSession(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid pwd"})
 		return
 	}
-	res, err := db.Query("SELECT grNo, userRole FROM students WHERE grNo=? AND sPwd=? ", credentials.UserId, credentials.Password)
+	res, err := db.Query("SELECT grNo, userRole, studName FROM students WHERE grNo=? AND sPwd=? ", credentials.UserId, credentials.Password)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
 	}
 	temptime := time.Now().Add(24 * time.Hour)
 	fmt.Println("time added 1 day", temptime)
+	var name string
+	var role string
 	if res.Next() {
 		var grNo int
-		var role string
-		err = res.Scan(&grNo, &role)
+		err = res.Scan(&grNo, &role, &name)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, err)
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
 			return
 		}
 		idExist = true
@@ -92,17 +93,17 @@ func CreateSession(ctx *gin.Context) {
 		claim.RegisteredClaims.IssuedAt = jwt.NewNumericDate(time.Now())
 		claim.RegisteredClaims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(24 * time.Hour))
 	} else if !res.Next() {
-		res, err = db.Query("SELECT tId, userRole FROM teachers WHERE tId=? AND tPwd=? ", credentials.UserId, credentials.Password)
+		res, err = db.Query("SELECT tId, userRole, tName FROM teachers WHERE tId=? AND tPwd=? ", credentials.UserId, credentials.Password)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, err)
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
 			return
 		}
 		if res.Next() {
 			var tId string
-			var role string
-			err = res.Scan(&tId, &role)
+			// var role string
+			err = res.Scan(&tId, &role, &name)
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, err)
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
 				return
 			}
 			idExist = true
@@ -113,11 +114,12 @@ func CreateSession(ctx *gin.Context) {
 			claim.RegisteredClaims.ExpiresAt = jwt.NewNumericDate(temptime)
 		} else {
 			var aId string
-			err := db.QueryRow("SELECT admin_id FROM admins WHERE admin_id=? AND admin_pwd=? ", credentials.UserId, credentials.Password).Scan(&aId)
+			err := db.QueryRow("SELECT admin_id,admin_name FROM admins WHERE admin_id=? AND admin_pwd=? ", credentials.UserId, credentials.Password).Scan(&aId, &name)
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "invalid credentials"})
 				return
 			}
+			role = "admin"
 			idExist = true
 			fmt.Println("in admin")
 			claim.Uid = aId
@@ -140,24 +142,24 @@ func CreateSession(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not process session"})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"token": tokenString})
+	ctx.JSON(http.StatusOK, gin.H{"output": tokenString, "username": name, "role": role})
 
 	fmt.Println(claim)
-	fmt.Println(ctx.Cookie("usercookie"))
+	// fmt.Println(ctx.Cookie("usercookie"))
 	// }
 }
 
 func ValidateSession() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		userCookie, err := ctx.Cookie("userCookie")
+		userCookie, err := ctx.Cookie("token")
 		fmt.Println("cookie received - ", userCookie, "error received - ", err)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "token not found"})
 			ctx.Abort()
 			return
 		}
-		t := ctx.Request.CookiesNamed("userCookie")
-		fmt.Println(t)
+		// t := ctx.Request.CookiesNamed("userCookie")
+		// fmt.Println(t)
 		if userCookie == "" || len([]byte(userCookie)) < 3 {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "token not found"})
 			ctx.Abort()
@@ -171,7 +173,7 @@ func ValidateSession() gin.HandlerFunc {
 			return
 		}
 		defer db.Close()
-		fmt.Println(userCookie)
+		// fmt.Println(userCookie)
 		claim := &JwtClaims{}
 
 		token, err := jwt.ParseWithClaims(userCookie, claim, func(t *jwt.Token) (any, error) {
